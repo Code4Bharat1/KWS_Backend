@@ -1,0 +1,789 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  createdAt   DateTime @default(now())
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model account_emailaddress {
+  id                        Int                         @id @default(autoincrement())
+  email                     String                      @unique @db.VarChar(254)
+  verified                  Boolean
+  primary                   Boolean
+  user_id                   BigInt
+  users_user                users_user                  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "account_emailaddress_user_id_2c513194_fk_users_user_id")
+  account_emailconfirmation account_emailconfirmation[]
+
+  @@index([email], map: "account_emailaddress_email_03be32b2_like")
+  @@index([user_id], map: "account_emailaddress_user_id_2c513194")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model account_emailconfirmation {
+  id                   Int                  @id @default(autoincrement())
+  created              DateTime             @db.Timestamptz(6)
+  sent                 DateTime?            @db.Timestamptz(6)
+  key                  String               @unique @db.VarChar(64)
+  email_address_id     Int
+  account_emailaddress account_emailaddress @relation(fields: [email_address_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "account_emailconfirm_email_address_id_5b7f8c58_fk_account_e")
+
+  @@index([email_address_id], map: "account_emailconfirmation_email_address_id_5b7f8c58")
+  @@index([key], map: "account_emailconfirmation_key_f43612bd_like")
+}
+
+model auth_group {
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique @db.VarChar(150)
+  auth_group_permissions auth_group_permissions[]
+  users_user_groups      users_user_groups[]
+
+  @@index([name], map: "auth_group_name_a6ea08ec_like")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model auth_group_permissions {
+  id              BigInt          @id @default(autoincrement())
+  group_id        Int
+  permission_id   Int
+  auth_permission auth_permission @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_group_permissio_permission_id_84c5c92e_fk_auth_perm")
+  auth_group      auth_group      @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_group_permissions_group_id_b120cbf9_fk_auth_group_id")
+
+  @@unique([group_id, permission_id], map: "auth_group_permissions_group_id_permission_id_0cd325b0_uniq")
+  @@index([group_id], map: "auth_group_permissions_group_id_b120cbf9")
+  @@index([permission_id], map: "auth_group_permissions_permission_id_84c5c92e")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model auth_permission {
+  id                          Int                           @id @default(autoincrement())
+  name                        String                        @db.VarChar(255)
+  content_type_id             Int
+  codename                    String                        @db.VarChar(100)
+  auth_group_permissions      auth_group_permissions[]
+  django_content_type         django_content_type           @relation(fields: [content_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "auth_permission_content_type_id_2f476e4b_fk_django_co")
+  users_user_user_permissions users_user_user_permissions[]
+
+  @@unique([content_type_id, codename], map: "auth_permission_content_type_id_codename_01ab375a_uniq")
+  @@index([content_type_id], map: "auth_permission_content_type_id_2f476e4b")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_attendee {
+  id                 BigInt               @id @default(autoincrement())
+  ticket_id          BigInt?
+  num_people         Int
+  attended_time      DateTime             @db.Timestamptz(6)
+  event_id           BigInt?
+  kws_member_id      BigInt?
+  core_event         core_event?          @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_attendee_event_id_7f07451e_fk_core_event_id")
+  core_kwsmember     core_kwsmember?      @relation(fields: [kws_member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_attendee_kws_member_id_6059386c_fk_core_kwsmember_user_id")
+  core_eventticket   core_eventticket?    @relation(fields: [ticket_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_attendee_ticket_id_140cb005_fk_core_eventticket_id")
+  core_auditattendee core_auditattendee[]
+  core_luckydraw     core_luckydraw[]
+
+  @@index([event_id], map: "core_attendee_event_id_7f07451e")
+  @@index([kws_member_id], map: "core_attendee_kws_member_id_6059386c")
+  @@index([ticket_id], map: "core_attendee_ticket_id_140cb005")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditattendee {
+  id             BigInt          @id @default(autoincrement())
+  num_people     Int
+  action         String          @db.VarChar(10)
+  created_at     DateTime        @db.Timestamptz(6)
+  attendee_id    BigInt?
+  committed_id   BigInt?
+  core_attendee  core_attendee?  @relation(fields: [attendee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditattendee_attendee_id_646ec007_fk_core_attendee_id")
+  core_kwsmember core_kwsmember? @relation(fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditattendee_committed_id_cfa1428f_fk_core_kwsm")
+
+  @@index([attendee_id], map: "core_auditattendee_attendee_id_646ec007")
+  @@index([committed_id], map: "core_auditattendee_committed_id_cfa1428f")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditevent {
+  id             BigInt          @id @default(autoincrement())
+  name           String          @db.VarChar(250)
+  start_date     DateTime        @db.Timestamptz(6)
+  end_date       DateTime        @db.Timestamptz(6)
+  action         String          @db.VarChar(10)
+  created_at     DateTime        @db.Timestamptz(6)
+  committed_id   BigInt?
+  event_id       BigInt?
+  core_kwsmember core_kwsmember? @relation(fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditevent_committed_id_790e18eb_fk_core_kwsmember_user_id")
+  core_event     core_event?     @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditevent_event_id_6d47a18c_fk_core_event_id")
+
+  @@index([committed_id], map: "core_auditevent_committed_id_790e18eb")
+  @@index([event_id], map: "core_auditevent_event_id_6d47a18c")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditeventticket {
+  id               BigInt            @id @default(autoincrement())
+  name             String            @db.VarChar(250)
+  phone            String            @db.VarChar(50)
+  civil_id         String            @db.VarChar(12)
+  ticket_no        String            @db.VarChar(50)
+  amount_in_kwd    Decimal           @db.Decimal(10, 3)
+  action           String            @db.VarChar(10)
+  created_at       DateTime          @db.Timestamptz(6)
+  committed_id     BigInt?
+  ticket_id        BigInt?
+  core_kwsmember   core_kwsmember?   @relation(fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditeventticke_committed_id_56e8b8a4_fk_core_kwsm")
+  core_eventticket core_eventticket? @relation(fields: [ticket_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditeventticket_ticket_id_e3d38a6c_fk_core_eventticket_id")
+
+  @@index([committed_id], map: "core_auditeventticket_committed_id_56e8b8a4")
+  @@index([ticket_id], map: "core_auditeventticket_ticket_id_e3d38a6c")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditfailedemail {
+  id                                                                  BigInt            @id @default(autoincrement())
+  resolved                                                            Boolean
+  comments                                                            String?
+  created_at                                                          DateTime          @db.Timestamptz(6)
+  committed_id                                                        BigInt?
+  failed_email_id                                                     BigInt?
+  resolved_by_id                                                      BigInt?
+  core_kwsmember_core_auditfailedemail_committed_idTocore_kwsmember   core_kwsmember?   @relation("core_auditfailedemail_committed_idTocore_kwsmember", fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditfailedemai_committed_id_99aefd69_fk_core_kwsm")
+  core_failedemail                                                    core_failedemail? @relation(fields: [failed_email_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditfailedemai_failed_email_id_45fdf716_fk_core_fail")
+  core_kwsmember_core_auditfailedemail_resolved_by_idTocore_kwsmember core_kwsmember?   @relation("core_auditfailedemail_resolved_by_idTocore_kwsmember", fields: [resolved_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditfailedemai_resolved_by_id_8c1925b9_fk_core_kwsm")
+
+  @@index([committed_id], map: "core_auditfailedemail_committed_id_99aefd69")
+  @@index([failed_email_id], map: "core_auditfailedemail_failed_email_id_45fdf716")
+  @@index([resolved_by_id], map: "core_auditfailedemail_resolved_by_id_8c1925b9")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditmembertransactions {
+  id                                                                       BigInt                  @id @default(autoincrement())
+  category                                                                 String                  @db.VarChar(15)
+  amount                                                                   Decimal                 @db.Decimal(10, 3)
+  date                                                                     DateTime                @db.Date
+  remarks                                                                  String?
+  action                                                                   String                  @db.VarChar(10)
+  created_date                                                             DateTime                @db.Timestamptz(6)
+  committed_id                                                             BigInt?
+  member_id                                                                BigInt?
+  transaction_id                                                           BigInt?
+  core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember core_kwsmember?         @relation("core_auditmembertransactions_committed_idTocore_kwsmember", fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditmembertran_committed_id_ed29971c_fk_core_kwsm")
+  core_kwsmember_core_auditmembertransactions_member_idTocore_kwsmember    core_kwsmember?         @relation("core_auditmembertransactions_member_idTocore_kwsmember", fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditmembertran_member_id_dc6f4923_fk_core_kwsm")
+  core_membertransaction                                                   core_membertransaction? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditmembertran_transaction_id_65e59db6_fk_core_memb")
+
+  @@index([committed_id], map: "core_auditmembertransactions_committed_id_ed29971c")
+  @@index([member_id], map: "core_auditmembertransactions_member_id_dc6f4923")
+  @@index([transaction_id], map: "core_auditmembertransactions_transaction_id_65e59db6")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditnonkwsmember {
+  id                      BigInt             @id @default(autoincrement())
+  is_company              Boolean
+  first_name              String?            @db.VarChar(250)
+  middle_name             String?            @db.VarChar(150)
+  last_name               String?            @db.VarChar(150)
+  relation_to_kws         String?
+  zone_member             String?            @db.VarChar(10)
+  email                   String?            @db.VarChar(254)
+  blood_group             String?            @db.VarChar(3)
+  education_qualification String?            @db.VarChar(150)
+  profession              String?            @db.VarChar(150)
+  contact                 String?            @db.VarChar(100)
+  whatsapp                String?            @db.VarChar(100)
+  gender                  String?            @db.VarChar(6)
+  marital_status          String?            @db.VarChar(7)
+  family_in_kuwait        String?            @db.VarChar(3)
+  flat_no                 String?            @db.VarChar(25)
+  floor_no                String?            @db.VarChar(25)
+  block_no                String?            @db.VarChar(100)
+  building_name_no        String?            @db.VarChar(150)
+  street_no_name          String?            @db.VarChar(150)
+  area                    String?            @db.VarChar(50)
+  action                  String             @db.VarChar(10)
+  created_at              DateTime           @db.Timestamptz(6)
+  account_id              BigInt?
+  committed_id            BigInt?
+  core_nonkwsmember       core_nonkwsmember? @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditnonkwsmemb_account_id_c8fb02b9_fk_core_nonk")
+  core_kwsmember          core_kwsmember?    @relation(fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditnonkwsmemb_committed_id_cc6a3563_fk_core_kwsm")
+
+  @@index([account_id], map: "core_auditnonkwsmember_account_id_c8fb02b9")
+  @@index([committed_id], map: "core_auditnonkwsmember_committed_id_cc6a3563")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditsandouqchaboxholder {
+  id                                                                          BigInt                    @id @default(autoincrement())
+  number                                                                      Int
+  in_use                                                                      Boolean
+  date_issued                                                                 DateTime?                 @db.Date
+  remarks                                                                     String?
+  action                                                                      String                    @db.VarChar(10)
+  created_at                                                                  DateTime                  @db.Timestamptz(6)
+  box_id                                                                      BigInt?
+  committed_id                                                                BigInt?
+  member_id                                                                   BigInt?
+  non_member_id                                                               BigInt?
+  referred_by_id                                                              BigInt?
+  core_sandouqchaboxholder                                                    core_sandouqchaboxholder? @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_box_id_c795416d_fk_core_sand")
+  core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember   core_kwsmember?           @relation("core_auditsandouqchaboxholder_committed_idTocore_kwsmember", fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_committed_id_3c271af4_fk_core_kwsm")
+  core_kwsmember_core_auditsandouqchaboxholder_member_idTocore_kwsmember      core_kwsmember?           @relation("core_auditsandouqchaboxholder_member_idTocore_kwsmember", fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_member_id_e268d88f_fk_core_kwsm")
+  core_nonkwsmember                                                           core_nonkwsmember?        @relation(fields: [non_member_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_non_member_id_2d091b98_fk_core_nonk")
+  core_kwsmember_core_auditsandouqchaboxholder_referred_by_idTocore_kwsmember core_kwsmember?           @relation("core_auditsandouqchaboxholder_referred_by_idTocore_kwsmember", fields: [referred_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_referred_by_id_8a171021_fk_core_kwsm")
+
+  @@index([box_id], map: "core_auditsandouqchaboxholder_box_id_c795416d")
+  @@index([committed_id], map: "core_auditsandouqchaboxholder_committed_id_3c271af4")
+  @@index([member_id], map: "core_auditsandouqchaboxholder_member_id_e268d88f")
+  @@index([non_member_id], map: "core_auditsandouqchaboxholder_non_member_id_2d091b98")
+  @@index([referred_by_id], map: "core_auditsandouqchaboxholder_referred_by_id_8a171021")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_auditsandouqchatransaction {
+  id                                                                             BigInt                      @id @default(autoincrement())
+  date                                                                           DateTime                    @db.Date
+  note_20                                                                        Int
+  note_10                                                                        Int
+  note_5                                                                         Int
+  note_1                                                                         Int
+  note_0_5                                                                       Int
+  note_0_25                                                                      Int
+  coin_100                                                                       Int
+  coin_50                                                                        Int
+  coin_20                                                                        Int
+  coin_10                                                                        Int
+  coin_5                                                                         Int
+  action                                                                         String                      @db.VarChar(10)
+  created_at                                                                     DateTime                    @db.Timestamptz(6)
+  box_id                                                                         BigInt?
+  collected_by_id                                                                BigInt?
+  committed_id                                                                   BigInt?
+  transaction_id                                                                 BigInt?
+  core_sandouqchaboxholder                                                       core_sandouqchaboxholder?   @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_box_id_59b86d39_fk_core_sand")
+  core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember core_kwsmember?             @relation("core_auditsandouqchatransaction_collected_by_idTocore_kwsmember", fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_collected_by_id_05fb1dfc_fk_core_kwsm")
+  core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember    core_kwsmember?             @relation("core_auditsandouqchatransaction_committed_idTocore_kwsmember", fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_committed_id_72310e15_fk_core_kwsm")
+  core_sandouqchatransaction                                                     core_sandouqchatransaction? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_transaction_id_031f80cd_fk_core_sand")
+
+  @@index([box_id], map: "core_auditsandouqchatransaction_box_id_59b86d39")
+  @@index([collected_by_id], map: "core_auditsandouqchatransaction_collected_by_id_05fb1dfc")
+  @@index([committed_id], map: "core_auditsandouqchatransaction_committed_id_72310e15")
+  @@index([transaction_id], map: "core_auditsandouqchatransaction_transaction_id_031f80cd")
+}
+
+model core_event {
+  id               BigInt             @id @default(autoincrement())
+  name             String             @db.VarChar(250)
+  start_date       DateTime           @db.Timestamptz(6)
+  end_date         DateTime           @db.Timestamptz(6)
+  core_attendee    core_attendee[]
+  core_auditevent  core_auditevent[]
+  core_eventticket core_eventticket[]
+  core_luckydraw   core_luckydraw[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_eventticket {
+  id                    BigInt                  @id @default(autoincrement())
+  name                  String                  @db.VarChar(250)
+  phone                 String                  @db.VarChar(50)
+  civil_id              String                  @db.VarChar(12)
+  ticket_no             String                  @db.VarChar(50)
+  amount_in_kwd         Decimal                 @db.Decimal(10, 3)
+  event_id              BigInt?
+  timestamp             DateTime                @db.Timestamptz(6)
+  core_attendee         core_attendee[]
+  core_auditeventticket core_auditeventticket[]
+  core_event            core_event?             @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_eventticket_event_id_c6580ce6_fk_core_event_id")
+
+  @@unique([event_id, ticket_no], map: "unique_ticket_created_per_event")
+  @@index([event_id], map: "core_eventticket_event_id_c6580ce6")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_failedemail {
+  id                    BigInt                  @id @default(autoincrement())
+  email_to              String                  @db.VarChar(200)
+  reason_for_email      String
+  reason_for_failure    String
+  failed_time           DateTime                @db.Timestamptz(6)
+  resolved              Boolean
+  comments              String?
+  resolved_by_id        BigInt?
+  core_auditfailedemail core_auditfailedemail[]
+  core_kwsmember        core_kwsmember?         @relation(fields: [resolved_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_failedemail_resolved_by_id_ac9d98a8_fk_core_kwsm")
+
+  @@index([resolved_by_id], map: "core_failedemail_resolved_by_id_ac9d98a8")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_informationupdate {
+  id             BigInt          @id @default(autoincrement())
+  requested_date DateTime        @db.Timestamptz(6)
+  updated_date   DateTime        @db.Timestamptz(6)
+  processed      Boolean
+  data           Json
+  approved_by    String?         @db.VarChar(150)
+  member_id      BigInt?
+  core_kwsmember core_kwsmember? @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_informationupda_member_id_b646865c_fk_core_kwsm")
+
+  @@index([member_id], map: "core_informationupdate_member_id_b646865c")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_kwsmember {
+  profile_picture                                                                                 String?                           @db.VarChar(100)
+  user_id                                                                                         BigInt                            @id
+  civil_id                                                                                        String                            @unique
+  first_name                                                                                      String?                           @db.VarChar(150)
+  middle_name                                                                                     String?                           @db.VarChar(150)
+  last_name                                                                                       String?                           @db.VarChar(150)
+  email                                                                                           String?                           @db.VarChar(254)
+  dob                                                                                             DateTime?                         @db.Date
+  blood_group                                                                                     String?                           @db.VarChar(3)
+  education_qualification                                                                         String?                           @db.VarChar(150)
+  profession                                                                                      String?                           @db.VarChar(150)
+  kuwait_contact                                                                                  String?                           @db.VarChar(100)
+  kuwait_whatsapp                                                                                 String?                           @db.VarChar(100)
+  gender                                                                                          String                            @db.VarChar(6)
+  marital_status                                                                                  String?                           @db.VarChar(7)
+  family_in_kuwait                                                                                String?                           @db.VarChar(3)
+  flat_no                                                                                         String?                           @db.VarChar(25)
+  floor_no                                                                                        String?                           @db.VarChar(25)
+  block_no                                                                                        String?                           @db.VarChar(100)
+  building_name_no                                                                                String?                           @db.VarChar(150)
+  street_no_name                                                                                  String?                           @db.VarChar(150)
+  area                                                                                            String?                           @db.VarChar(50)
+  residence_complete_address                                                                      String?                           @db.VarChar(300)
+  pin_no_india                                                                                    String?                           @db.VarChar(30)
+  mohalla_village                                                                                 String?                           @db.VarChar(150)
+  taluka                                                                                          String?                           @db.VarChar(150)
+  district                                                                                        String?                           @db.VarChar(150)
+  native_pin_no                                                                                   String?                           @db.VarChar(30)
+  indian_contact_no_1                                                                             String?                           @db.VarChar(100)
+  indian_contact_no_2                                                                             String?                           @db.VarChar(100)
+  indian_contact_no_3                                                                             String?                           @db.VarChar(100)
+  emergency_name_kuwait                                                                           String?                           @db.VarChar(150)
+  emergency_contact_kuwait                                                                        String?                           @db.VarChar(100)
+  emergency_name_india                                                                            String?                           @db.VarChar(150)
+  emergency_contact_india                                                                         String?                           @db.VarChar(100)
+  father_name                                                                                     String?                           @db.VarChar(150)
+  mother_name                                                                                     String?                           @db.VarChar(150)
+  spouse_name                                                                                     String?                           @db.VarChar(150)
+  child_name_1                                                                                    String?                           @db.VarChar(150)
+  child_name_2                                                                                    String?                           @db.VarChar(150)
+  child_name_3                                                                                    String?                           @db.VarChar(150)
+  child_name_4                                                                                    String?                           @db.VarChar(150)
+  child_name_5                                                                                    String?                           @db.VarChar(150)
+  additional_information                                                                          String?
+  full_name_1                                                                                     String?                           @db.VarChar(150)
+  relation_1                                                                                      String?                           @db.VarChar(50)
+  percentage_1                                                                                    Int?
+  mobile_1                                                                                        String?                           @db.VarChar(100)
+  full_name_2                                                                                     String?                           @db.VarChar(150)
+  relation_2                                                                                      String?                           @db.VarChar(50)
+  percentage_2                                                                                    Int?
+  mobile_2                                                                                        String?                           @db.VarChar(100)
+  full_name_3                                                                                     String?                           @db.VarChar(150)
+  relation_3                                                                                      String?                           @db.VarChar(50)
+  percentage_3                                                                                    Int?
+  mobile_3                                                                                        String?                           @db.VarChar(100)
+  full_name_4                                                                                     String?                           @db.VarChar(150)
+  relation_4                                                                                      String?                           @db.VarChar(50)
+  percentage_4                                                                                    Int?
+  mobile_4                                                                                        String?                           @db.VarChar(100)
+  kwsid                                                                                           String?                           @db.VarChar(10)
+  admin_charges                                                                                   String?                           @db.VarChar(3)
+  amount_in_kwd                                                                                   Decimal?                          @db.Decimal(10, 2)
+  type_of_member                                                                                  String?                           @db.VarChar(50)
+  approved_by                                                                                     String?                           @db.VarChar(150)
+  approved_date                                                                                   DateTime?                         @db.Date
+  updated_date                                                                                    DateTime                          @db.Timestamptz(6)
+  application_date                                                                                DateTime                          @db.Timestamptz(6)
+  form_scanned                                                                                    String?                           @db.VarChar(100)
+  form_received_by                                                                                String?                           @db.VarChar(250)
+  card_printed                                                                                    String?                           @db.VarChar(3)
+  card_printed_date                                                                               DateTime?                         @db.Date
+  card_expiry_date                                                                                DateTime?                         @db.Date
+  follow_up_member                                                                                String?                           @db.VarChar(100)
+  zone_member                                                                                     String?                           @db.VarChar(10)
+  office_comments                                                                                 String?
+  membership_status                                                                               String?                           @db.VarChar(10)
+  core_attendee                                                                                   core_attendee[]
+  core_auditattendee                                                                              core_auditattendee[]
+  core_auditevent                                                                                 core_auditevent[]
+  core_auditeventticket                                                                           core_auditeventticket[]
+  core_auditfailedemail_core_auditfailedemail_committed_idTocore_kwsmember                        core_auditfailedemail[]           @relation("core_auditfailedemail_committed_idTocore_kwsmember")
+  core_auditfailedemail_core_auditfailedemail_resolved_by_idTocore_kwsmember                      core_auditfailedemail[]           @relation("core_auditfailedemail_resolved_by_idTocore_kwsmember")
+  core_auditmembertransactions_core_auditmembertransactions_committed_idTocore_kwsmember          core_auditmembertransactions[]    @relation("core_auditmembertransactions_committed_idTocore_kwsmember")
+  core_auditmembertransactions_core_auditmembertransactions_member_idTocore_kwsmember             core_auditmembertransactions[]    @relation("core_auditmembertransactions_member_idTocore_kwsmember")
+  core_auditnonkwsmember                                                                          core_auditnonkwsmember[]
+  core_auditsandouqchaboxholder_core_auditsandouqchaboxholder_committed_idTocore_kwsmember        core_auditsandouqchaboxholder[]   @relation("core_auditsandouqchaboxholder_committed_idTocore_kwsmember")
+  core_auditsandouqchaboxholder_core_auditsandouqchaboxholder_member_idTocore_kwsmember           core_auditsandouqchaboxholder[]   @relation("core_auditsandouqchaboxholder_member_idTocore_kwsmember")
+  core_auditsandouqchaboxholder_core_auditsandouqchaboxholder_referred_by_idTocore_kwsmember      core_auditsandouqchaboxholder[]   @relation("core_auditsandouqchaboxholder_referred_by_idTocore_kwsmember")
+  core_auditsandouqchatransaction_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember core_auditsandouqchatransaction[] @relation("core_auditsandouqchatransaction_collected_by_idTocore_kwsmember")
+  core_auditsandouqchatransaction_core_auditsandouqchatransaction_committed_idTocore_kwsmember    core_auditsandouqchatransaction[] @relation("core_auditsandouqchatransaction_committed_idTocore_kwsmember")
+  core_failedemail                                                                                core_failedemail[]
+  core_informationupdate                                                                          core_informationupdate[]
+  users_user                                                                                      users_user                        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_kwsmember_user_id_88bb0b4e_fk_users_user_id")
+  core_membertransaction                                                                          core_membertransaction[]
+  core_sandouqchaboxholder_core_sandouqchaboxholder_member_idTocore_kwsmember                     core_sandouqchaboxholder?         @relation("core_sandouqchaboxholder_member_idTocore_kwsmember")
+  core_sandouqchaboxholder_core_sandouqchaboxholder_referred_by_idTocore_kwsmember                core_sandouqchaboxholder[]        @relation("core_sandouqchaboxholder_referred_by_idTocore_kwsmember")
+  core_sandouqchatransaction                                                                      core_sandouqchatransaction[]
+
+  @@index([civil_id], map: "core_kwsmember_civil_id_9d8c8e12_like")
+  @@index([kwsid], map: "core_kwsmember_kwsid_e46800af")
+  @@index([kwsid], map: "core_kwsmember_kwsid_e46800af_like")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_luckydraw {
+  id            BigInt         @id @default(autoincrement())
+  timestamp     DateTime       @db.Timestamptz(6)
+  remarks       String?
+  attendee_id   BigInt?
+  event_id      BigInt?
+  core_attendee core_attendee? @relation(fields: [attendee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_luckydraw_attendee_id_7d4ff97c_fk_core_attendee_id")
+  core_event    core_event?    @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_luckydraw_event_id_a4a07889_fk_core_event_id")
+
+  @@unique([event_id, attendee_id], map: "unique_lucky_draw_per_event")
+  @@index([attendee_id], map: "core_luckydraw_attendee_id_7d4ff97c")
+  @@index([event_id], map: "core_luckydraw_event_id_a4a07889")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_membertransaction {
+  id                           BigInt                         @id @default(autoincrement())
+  category                     String                         @db.VarChar(15)
+  amount                       Decimal                        @db.Decimal(10, 3)
+  date                         DateTime                       @db.Date
+  remarks                      String?
+  member_id                    BigInt?
+  core_auditmembertransactions core_auditmembertransactions[]
+  core_kwsmember               core_kwsmember?                @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_membertransacti_member_id_a9db06b1_fk_core_kwsm")
+
+  @@index([member_id], map: "core_membertransaction_member_id_a9db06b1")
+}
+
+model core_nonkwsmember {
+  id                            BigInt                          @id @default(autoincrement())
+  is_company                    Boolean
+  first_name                    String?                         @db.VarChar(250)
+  middle_name                   String?                         @db.VarChar(150)
+  last_name                     String?                         @db.VarChar(150)
+  relation_to_kws               String?
+  zone_member                   String?                         @db.VarChar(10)
+  email                         String?                         @db.VarChar(254)
+  blood_group                   String?                         @db.VarChar(3)
+  education_qualification       String?                         @db.VarChar(150)
+  profession                    String?                         @db.VarChar(150)
+  contact                       String?                         @db.VarChar(100)
+  whatsapp                      String?                         @db.VarChar(100)
+  gender                        String?                         @db.VarChar(6)
+  marital_status                String?                         @db.VarChar(7)
+  family_in_kuwait              String?                         @db.VarChar(3)
+  flat_no                       String?                         @db.VarChar(25)
+  floor_no                      String?                         @db.VarChar(25)
+  block_no                      String?                         @db.VarChar(100)
+  building_name_no              String?                         @db.VarChar(150)
+  street_no_name                String?                         @db.VarChar(150)
+  area                          String?                         @db.VarChar(50)
+  core_auditnonkwsmember        core_auditnonkwsmember[]
+  core_auditsandouqchaboxholder core_auditsandouqchaboxholder[]
+  core_sandouqchaboxholder      core_sandouqchaboxholder?
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_sandouqchaboxholder {
+  id                                                                     BigInt                            @id @default(autoincrement())
+  number                                                                 Int                               @unique
+  in_use                                                                 Boolean
+  date_issued                                                            DateTime?                         @db.Date
+  remarks                                                                String?
+  member_id                                                              BigInt?                           @unique
+  non_member_id                                                          BigInt?                           @unique
+  referred_by_id                                                         BigInt?
+  core_auditsandouqchaboxholder                                          core_auditsandouqchaboxholder[]
+  core_auditsandouqchatransaction                                        core_auditsandouqchatransaction[]
+  core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember      core_kwsmember?                   @relation("core_sandouqchaboxholder_member_idTocore_kwsmember", fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchaboxho_member_id_a846af5c_fk_core_kwsm")
+  core_nonkwsmember                                                      core_nonkwsmember?                @relation(fields: [non_member_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchaboxho_non_member_id_f7d32d87_fk_core_nonk")
+  core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember core_kwsmember?                   @relation("core_sandouqchaboxholder_referred_by_idTocore_kwsmember", fields: [referred_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchaboxho_referred_by_id_bf51f5dc_fk_core_kwsm")
+  core_sandouqchatransaction                                             core_sandouqchatransaction[]
+
+  @@index([referred_by_id], map: "core_sandouqchaboxholder_referred_by_id_bf51f5dc")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_sandouqchatransaction {
+  id                              BigInt                            @id @default(autoincrement())
+  date                            DateTime                          @db.Date
+  note_20                         Int
+  note_10                         Int
+  note_5                          Int
+  note_1                          Int
+  note_0_5                        Int
+  note_0_25                       Int
+  coin_100                        Int
+  coin_50                         Int
+  coin_20                         Int
+  coin_10                         Int
+  coin_5                          Int
+  box_id                          BigInt?
+  collected_by_id                 BigInt?
+  core_auditsandouqchatransaction core_auditsandouqchatransaction[]
+  core_sandouqchaboxholder        core_sandouqchaboxholder?         @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_box_id_75519a4e_fk_core_sand")
+  core_kwsmember                  core_kwsmember?                   @relation(fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_collected_by_id_41f2b692_fk_core_kwsm")
+
+  @@index([box_id], map: "core_sandouqchatransaction_box_id_75519a4e")
+  @@index([collected_by_id], map: "core_sandouqchatransaction_collected_by_id_41f2b692")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model django_admin_log {
+  id                  Int                  @id @default(autoincrement())
+  action_time         DateTime             @db.Timestamptz(6)
+  object_id           String?
+  object_repr         String               @db.VarChar(200)
+  action_flag         Int                  @db.SmallInt
+  change_message      String
+  content_type_id     Int?
+  user_id             BigInt
+  django_content_type django_content_type? @relation(fields: [content_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_admin_log_content_type_id_c4bce8eb_fk_django_co")
+  users_user          users_user           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_admin_log_user_id_c564eba6_fk_users_user_id")
+
+  @@index([content_type_id], map: "django_admin_log_content_type_id_c4bce8eb")
+  @@index([user_id], map: "django_admin_log_user_id_c564eba6")
+}
+
+model django_celery_beat_clockedschedule {
+  id                              Int                               @id @default(autoincrement())
+  clocked_time                    DateTime                          @db.Timestamptz(6)
+  django_celery_beat_periodictask django_celery_beat_periodictask[]
+}
+
+model django_celery_beat_crontabschedule {
+  id                              Int                               @id @default(autoincrement())
+  minute                          String                            @db.VarChar(240)
+  hour                            String                            @db.VarChar(96)
+  day_of_week                     String                            @db.VarChar(64)
+  day_of_month                    String                            @db.VarChar(124)
+  month_of_year                   String                            @db.VarChar(64)
+  timezone                        String                            @db.VarChar(63)
+  django_celery_beat_periodictask django_celery_beat_periodictask[]
+}
+
+model django_celery_beat_intervalschedule {
+  id                              Int                               @id @default(autoincrement())
+  every                           Int
+  period                          String                            @db.VarChar(24)
+  django_celery_beat_periodictask django_celery_beat_periodictask[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model django_celery_beat_periodictask {
+  id                                  Int                                  @id @default(autoincrement())
+  name                                String                               @unique @db.VarChar(200)
+  task                                String                               @db.VarChar(200)
+  args                                String
+  kwargs                              String
+  queue                               String?                              @db.VarChar(200)
+  exchange                            String?                              @db.VarChar(200)
+  routing_key                         String?                              @db.VarChar(200)
+  expires                             DateTime?                            @db.Timestamptz(6)
+  enabled                             Boolean
+  last_run_at                         DateTime?                            @db.Timestamptz(6)
+  total_run_count                     Int
+  date_changed                        DateTime                             @db.Timestamptz(6)
+  description                         String
+  crontab_id                          Int?
+  interval_id                         Int?
+  solar_id                            Int?
+  one_off                             Boolean
+  start_time                          DateTime?                            @db.Timestamptz(6)
+  priority                            Int?
+  headers                             String
+  clocked_id                          Int?
+  expire_seconds                      Int?
+  django_celery_beat_clockedschedule  django_celery_beat_clockedschedule?  @relation(fields: [clocked_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_celery_beat_p_clocked_id_47a69f82_fk_django_ce")
+  django_celery_beat_crontabschedule  django_celery_beat_crontabschedule?  @relation(fields: [crontab_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_celery_beat_p_crontab_id_d3cba168_fk_django_ce")
+  django_celery_beat_intervalschedule django_celery_beat_intervalschedule? @relation(fields: [interval_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_celery_beat_p_interval_id_a8ca27da_fk_django_ce")
+  django_celery_beat_solarschedule    django_celery_beat_solarschedule?    @relation(fields: [solar_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "django_celery_beat_p_solar_id_a87ce72c_fk_django_ce")
+
+  @@index([clocked_id], map: "django_celery_beat_periodictask_clocked_id_47a69f82")
+  @@index([crontab_id], map: "django_celery_beat_periodictask_crontab_id_d3cba168")
+  @@index([interval_id], map: "django_celery_beat_periodictask_interval_id_a8ca27da")
+  @@index([name], map: "django_celery_beat_periodictask_name_265a36b7_like")
+  @@index([solar_id], map: "django_celery_beat_periodictask_solar_id_a87ce72c")
+}
+
+model django_celery_beat_periodictasks {
+  ident       Int      @id @db.SmallInt
+  last_update DateTime @db.Timestamptz(6)
+}
+
+model django_celery_beat_solarschedule {
+  id                              Int                               @id @default(autoincrement())
+  event                           String                            @db.VarChar(24)
+  latitude                        Decimal                           @db.Decimal(9, 6)
+  longitude                       Decimal                           @db.Decimal(9, 6)
+  django_celery_beat_periodictask django_celery_beat_periodictask[]
+
+  @@unique([event, latitude, longitude], map: "django_celery_beat_solar_event_latitude_longitude_ba64999a_uniq")
+}
+
+model django_content_type {
+  id               Int                @id @default(autoincrement())
+  app_label        String             @db.VarChar(100)
+  model            String             @db.VarChar(100)
+  auth_permission  auth_permission[]
+  django_admin_log django_admin_log[]
+
+  @@unique([app_label, model], map: "django_content_type_app_label_model_76bd3d3b_uniq")
+}
+
+model django_migrations {
+  id      BigInt   @id @default(autoincrement())
+  app     String   @db.VarChar(255)
+  name    String   @db.VarChar(255)
+  applied DateTime @db.Timestamptz(6)
+}
+
+model django_session {
+  session_key  String   @id @db.VarChar(40)
+  session_data String
+  expire_date  DateTime @db.Timestamptz(6)
+
+  @@index([expire_date], map: "django_session_expire_date_a5c62663")
+  @@index([session_key], map: "django_session_session_key_c0390e0f_like")
+}
+
+model django_site {
+  id                            Int                             @id @default(autoincrement())
+  domain                        String                          @unique(map: "django_site_domain_a2e37b91_uniq") @db.VarChar(100)
+  name                          String                          @db.VarChar(50)
+  socialaccount_socialapp_sites socialaccount_socialapp_sites[]
+
+  @@index([domain], map: "django_site_domain_a2e37b91_like")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model socialaccount_socialaccount {
+  id                        Int                         @id @default(autoincrement())
+  provider                  String                      @db.VarChar(30)
+  uid                       String                      @db.VarChar(191)
+  last_login                DateTime                    @db.Timestamptz(6)
+  date_joined               DateTime                    @db.Timestamptz(6)
+  extra_data                String
+  user_id                   BigInt
+  users_user                users_user                  @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "socialaccount_socialaccount_user_id_8146e70c_fk_users_user_id")
+  socialaccount_socialtoken socialaccount_socialtoken[]
+
+  @@unique([provider, uid], map: "socialaccount_socialaccount_provider_uid_fc810c6e_uniq")
+  @@index([user_id], map: "socialaccount_socialaccount_user_id_8146e70c")
+}
+
+model socialaccount_socialapp {
+  id                            Int                             @id @default(autoincrement())
+  provider                      String                          @db.VarChar(30)
+  name                          String                          @db.VarChar(40)
+  client_id                     String                          @db.VarChar(191)
+  secret                        String                          @db.VarChar(191)
+  key                           String                          @db.VarChar(191)
+  socialaccount_socialapp_sites socialaccount_socialapp_sites[]
+  socialaccount_socialtoken     socialaccount_socialtoken[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model socialaccount_socialapp_sites {
+  id                      BigInt                  @id @default(autoincrement())
+  socialapp_id            Int
+  site_id                 Int
+  django_site             django_site             @relation(fields: [site_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "socialaccount_social_site_id_2579dee5_fk_django_si")
+  socialaccount_socialapp socialaccount_socialapp @relation(fields: [socialapp_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "socialaccount_social_socialapp_id_97fb6e7d_fk_socialacc")
+
+  @@unique([socialapp_id, site_id], map: "socialaccount_socialapp__socialapp_id_site_id_71a9a768_uniq")
+  @@index([site_id], map: "socialaccount_socialapp_sites_site_id_2579dee5")
+  @@index([socialapp_id], map: "socialaccount_socialapp_sites_socialapp_id_97fb6e7d")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model socialaccount_socialtoken {
+  id                          Int                         @id @default(autoincrement())
+  token                       String
+  token_secret                String
+  expires_at                  DateTime?                   @db.Timestamptz(6)
+  account_id                  Int
+  app_id                      Int
+  socialaccount_socialaccount socialaccount_socialaccount @relation(fields: [account_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "socialaccount_social_account_id_951f210e_fk_socialacc")
+  socialaccount_socialapp     socialaccount_socialapp     @relation(fields: [app_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "socialaccount_social_app_id_636a42d7_fk_socialacc")
+
+  @@unique([app_id, account_id], map: "socialaccount_socialtoken_app_id_account_id_fca4e0ac_uniq")
+  @@index([account_id], map: "socialaccount_socialtoken_account_id_951f210e")
+  @@index([app_id], map: "socialaccount_socialtoken_app_id_636a42d7")
+}
+
+model users {
+  id       Int     @id @default(autoincrement())
+  name     String? @db.VarChar(100)
+  email    String? @unique @db.VarChar(100)
+  password String? @db.VarChar(100)
+}
+
+model users_user {
+  id                          BigInt                        @id @default(autoincrement())
+  password                    String                        @db.VarChar(128)
+  last_login                  DateTime?                     @db.Timestamptz(6)
+  is_superuser                Boolean
+  username                    String                        @unique @db.VarChar(150)
+  email                       String                        @db.VarChar(254)
+  is_staff                    Boolean
+  is_active                   Boolean
+  date_joined                 DateTime                      @db.Timestamptz(6)
+  staff_roles                 Json
+  account_emailaddress        account_emailaddress[]
+  core_kwsmember              core_kwsmember?
+  django_admin_log            django_admin_log[]
+  socialaccount_socialaccount socialaccount_socialaccount[]
+  users_user_groups           users_user_groups[]
+  users_user_user_permissions users_user_user_permissions[]
+
+  @@index([username], map: "users_user_username_06e46fe6_like")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model users_user_groups {
+  id         BigInt     @id @default(autoincrement())
+  user_id    BigInt
+  group_id   Int
+  auth_group auth_group @relation(fields: [group_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_user_groups_group_id_9afc8d0e_fk_auth_group_id")
+  users_user users_user @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_user_groups_user_id_5f6f5a90_fk_users_user_id")
+
+  @@unique([user_id, group_id], map: "users_user_groups_user_id_group_id_b88eab82_uniq")
+  @@index([group_id], map: "users_user_groups_group_id_9afc8d0e")
+  @@index([user_id], map: "users_user_groups_user_id_5f6f5a90")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model users_user_user_permissions {
+  id              BigInt          @id @default(autoincrement())
+  user_id         BigInt
+  permission_id   Int
+  auth_permission auth_permission @relation(fields: [permission_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_user_user_perm_permission_id_0b93982e_fk_auth_perm")
+  users_user      users_user      @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "users_user_user_permissions_user_id_20aca447_fk_users_user_id")
+
+  @@unique([user_id, permission_id], map: "users_user_user_permissions_user_id_permission_id_43338c45_uniq")
+  @@index([permission_id], map: "users_user_user_permissions_permission_id_0b93982e")
+  @@index([user_id], map: "users_user_user_permissions_user_id_20aca447")
+}
