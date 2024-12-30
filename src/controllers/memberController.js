@@ -134,3 +134,43 @@ export const updateApprovalStatus = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+export const getAllMembers = async (req, res) => {
+  try {
+    const members = await prisma.core_kwsmember.findMany({
+      select: {
+        kwsid: true, // KWS ID
+        civil_id: true, // Civil ID
+        first_name: true, // First Name
+        middle_name: true, // Middle Name
+        last_name: true, // Last Name
+        zone_member: true, // Zone
+        indian_contact_no_1: true, // Contact
+        type_of_member: true, // Type of Member
+      },
+      orderBy: {
+        kwsid: "asc", // Change "asc" to "desc" for descending order
+      },
+    });
+
+    // Format data for response
+    const formattedMembers = members.map((member) => ({
+      kwsid: member.kwsid,
+      civil_id: member.civil_id,
+      name: `${member.first_name} ${member.middle_name || ""} ${member.last_name}`.trim(),
+      zone: member.zone_member,
+      contact: member.indian_contact_no_1,
+      typeOfMember: member.type_of_member,
+    }));
+
+    // Send response
+    res.status(200).json({ members: formattedMembers });
+  } catch (error) {
+    console.error("Error fetching members:", error);
+    res.status(500).json({ message: "Failed to fetch members", error: error.message });
+  }
+};

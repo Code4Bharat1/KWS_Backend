@@ -6,7 +6,6 @@ export const getProfile = async (req, res) => {
   const { user_id } = req.params;
 
   try {
-    // Validate user_id
     if (!user_id) {
       return res.status(400).json({ error: "User ID is required." });
     }
@@ -18,11 +17,8 @@ export const getProfile = async (req, res) => {
       return res.status(400).json({ error: "User ID must be a valid number." });
     }
 
-    // Fetch user profile
     const user = await prisma.users_user.findUnique({
-      where: {
-        id: parsedUserId,
-      },
+      where: { id: parsedUserId },
       select: {
         username: true,
         core_kwsmember: {
@@ -31,6 +27,7 @@ export const getProfile = async (req, res) => {
             middle_name: true,
             last_name: true,
             type_of_member: true,
+            profile_picture: true,
           },
         },
       },
@@ -40,7 +37,8 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ error: "User not found." });
     }
 
-    // Construct response
+    console.log("Database User Data:", user);
+
     const response = {
       username: user.username,
       core_kwsmember: user.core_kwsmember
@@ -49,9 +47,14 @@ export const getProfile = async (req, res) => {
             middleName: user.core_kwsmember.middle_name,
             lastName: user.core_kwsmember.last_name,
             typeOfMember: user.core_kwsmember.type_of_member,
+            profilePicture: user.core_kwsmember.profile_picture
+              ? `http://localhost:5786/${user.core_kwsmember.profile_picture}`
+              : null,
           }
         : null,
     };
+
+    console.log("Constructed Response:", response);
 
     return res.status(200).json({ user: response });
   } catch (error) {
