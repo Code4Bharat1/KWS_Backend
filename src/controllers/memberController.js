@@ -143,6 +143,7 @@ export const getAllMembers = async (req, res) => {
   try {
     const members = await prisma.core_kwsmember.findMany({
       select: {
+        user_id:true,
         kwsid: true, // KWS ID
         civil_id: true, // Civil ID
         first_name: true, // First Name
@@ -159,6 +160,7 @@ export const getAllMembers = async (req, res) => {
 
     // Format data for response
     const formattedMembers = members.map((member) => ({
+      user_id:member.user_id,
       kwsid: member.kwsid,
       civil_id: member.civil_id,
       name: `${member.first_name} ${member.middle_name || ""} ${member.last_name}`.trim(),
@@ -172,5 +174,39 @@ export const getAllMembers = async (req, res) => {
   } catch (error) {
     console.error("Error fetching members:", error);
     res.status(500).json({ message: "Failed to fetch members", error: error.message });
+  }
+};
+
+
+
+
+export const getChart = async (req, res) => {
+  try {
+    // Query to get the count of members per zone
+    const zoneData = await prisma.core_kwsmember.groupBy({
+      by: ['zone_member'],
+      _count: {
+        zone_member: true,
+      },
+    });
+
+    // Format the data as needed for the chart
+    const chartData = {
+      labels: zoneData.map((zone) => zone.zone_member),
+      datasets: [
+        {
+          data: zoneData.map((zone) => zone._count.zone_member),
+          backgroundColor: ["#3B82F6", "#F87171", "#10B981", "#FBBF24", "#FFA520"],  // Custom colors for each zone
+          borderColor: ["#2563EB", "#DC2626", "#059669", "#D97706", "#FFA599"],
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    // Send the chart data in response
+    res.json(chartData);
+  } catch (error) {
+    console.error('Error fetching chart data:', error);
+    res.status(500).json({ error: 'An error occurred while fetching chart data' });
   }
 };

@@ -1,12 +1,21 @@
+import path from 'path';  // To work with paths
+import { fileURLToPath } from 'url';  // To convert the current module's URL to a file path
+
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
-import path from 'path';  // To work with paths
-import { fileURLToPath } from 'url';  // To convert the current module's URL to a file path
 import authRoutes from './routes/authRoutes.js';
 import memberRoutes from './routes/memberRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
+import sandouqchaRoutes from './routes/sandouqchaRoutes.js';
+import sandouqchaTransactionRoutes from './routes/sandouqchaTransactionRoutes.js';
+import staffRoutes from './routes/staffRoutes.js';
+import eventRoutes from './routes/eventRoutes.js';
+import nonkwsRoutes from './routes/nonkwsRoutes.js';
+import { setupEventListeners } from './middleware/eventListener.js';
 
 dotenv.config();
 const app = express();
@@ -18,7 +27,7 @@ const __dirname = path.dirname(__filename);  // This will give you the current d
 // Enable CORS for frontend connection
 app.use(cors({
     origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT','DELETE' ,'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 }));
@@ -26,10 +35,13 @@ app.use(cors({
 // Parse JSON payloads
 app.use(express.json());
 app.use(bodyParser.json());
+setupEventListeners(process);
 
 // Serve static files from the "uploads" directory
 // This makes files in the "uploads" directory accessible at /uploads/{filename}
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/profile-pictures', express.static(path.join(__dirname, '../uploads/profile-pictures')));
+app.use('/uploads/form-scanned', express.static(path.join(__dirname, '../uploads/form-scanned')));
+
 
 // Debug middleware to inspect requests
 app.use((req, res, next) => {
@@ -43,6 +55,12 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/member', memberRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/transaction', transactionRoutes);
+app.use('/api/sandouqcha', sandouqchaRoutes);
+app.use('/api/sandouqchaTransaction', sandouqchaTransactionRoutes);
+app.use('/api/staff',staffRoutes);
+app.use('/api/event',eventRoutes);
+app.use('/api/nonkws',nonkwsRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {

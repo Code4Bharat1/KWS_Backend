@@ -1,0 +1,469 @@
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
+
+export const getTransactions = async (req, res) => {
+  try {
+    // Extract filters from query parameters
+    const { kwsId, category, fromDate, toDate } = req.query;
+
+    // Set the default `toDate` to today's date
+    const currentDate = new Date();
+    const formattedCurrentDate = currentDate.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+
+    // Build the where clause dynamically based on filters
+    const whereClause = {};
+    if (kwsId) {
+      whereClause.core_kwsmember = {
+        kwsid: kwsId,
+      };
+    }
+    if (category) {
+      whereClause.category = category;
+    }
+    if (fromDate || toDate) {
+      whereClause.date = {
+        ...(fromDate && { gte: new Date(fromDate) }),
+        ...(toDate && { lte: new Date(toDate || formattedCurrentDate) }),
+      };
+    } else {
+      // Default to fetching up to the current date if no date filters are provided
+      whereClause.date = {
+        lte: new Date(formattedCurrentDate),
+      };
+    }
+
+    // Fetch transactions from the database
+    const transactions = await prisma.core_membertransaction.findMany({
+      where: whereClause,
+      orderBy: {
+        date: "desc", // Sort by date descending
+      },
+      select: {
+        id: true,
+        date: true,
+        category: true,
+        remarks: true,
+        amount: true,
+        core_kwsmember: {
+          select: {
+            user_id: true,
+            kwsid: true,
+            first_name: true,
+            zone_member:true,
+          },
+        },
+      },
+    });
+
+    // Count the total number of transactions matching the filters
+    const totalTransactions = await prisma.core_membertransaction.count({
+      where: whereClause,
+    });
+
+    // Format the response
+    const formattedTransactions = transactions.map((transaction) => ({
+      UID: `0000${transaction.id}`, // Prefix UID with 0000
+      UserID: transaction.core_kwsmember?.user_id || "N/A",
+      KWSID: transaction.core_kwsmember?.kwsid || "N/A",
+      Date: formatDate(transaction.date), // Format the date
+      Category: transaction.category,
+      For: `${transaction.core_kwsmember?.first_name || "Unknown"}-${transaction.core_kwsmember?.kwsid || "N/A"}`, // Format: first_name-kwsid
+      Remarks: transaction.remarks || "No remarks available",
+      AmountKWD: formatAmount(transaction.amount), // Format the amount
+    }));
+
+    res.status(200).json({
+      totalTransactions,
+      transactions: formattedTransactions,
+    });
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    res.status(500).json({ error: "An error occurred while fetching transactions." });
+  }
+};
+
+
+const formatDate = (date) => {
+  if (!date) return "N/A";
+  const options = { day: "numeric", month: "long", year: "numeric" };
+  return new Date(date).toLocaleDateString("en-US", options); // Example: "6 June 2024"
+};
+
+
+const formatAmount = (amount) => {
+  if (amount === null || amount === undefined) return "0.000";
+  return parseFloat(amount).toFixed(3); // Ensure it's a number and format to 3 decimal places
+};
+
+
+
+
+
+
+
+
+
+export const addTransactions = async (req, res) => {
+  try {
+    const {
+      kwsId,
+      paymentFor, // Maps to `category` field
+      cardPrintedDate,
+      cardExpiryDate,
+      amountKWD,
+      date,
+      remarks,
+    } = req.body;
+
+    // Validate the input
+    if (!kwsId || !paymentFor || !amountKWD || !date) {
+      return res.status(400).json({
+        error: "KWS ID, Payment For, Amount (KWD), and Date are required fields.",
+      });
+    }
+
+    // Find the member by KWS ID
+    const member = await prisma.core_kwsmember.findFirst({
+      where: { kwsid: kwsId },
+      select: { user_id: true, card_printed_date: true, card_expiry_date: true },
+    });
+
+    if (!member) {
+      return res.status(404).json({
+        error: "No member found with the provided KWS ID.",
+      });
+    }
+
+    // Validate and parse the dates
+    const parseDate = (dateString) => {
+      const parsedDate = new Date(dateString);
+      if (isNaN(parsedDate)) {
+        return null; // Invalid date format
+      }
+      return parsedDate;
+    };
+
+    const validCardPrintedDate = cardPrintedDate ? parseDate(cardPrintedDate) : member.card_printed_date;
+    const validCardExpiryDate = cardExpiryDate ? parseDate(cardExpiryDate) : member.card_expiry_date;
+
+    if (!validCardPrintedDate && cardPrintedDate) {
+      return res.status(400).json({ error: "Invalid Card Printed Date format." });
+    }
+
+    if (!validCardExpiryDate && cardExpiryDate) {
+      return res.status(400).json({ error: "Invalid Card Expiry Date format." });
+    }
+
+    // Update `core_kwsmember` fields if provided
+    await prisma.core_kwsmember.update({
+      where: { user_id: member.user_id },
+      data: {
+        card_printed_date: validCardPrintedDate,
+        card_expiry_date: validCardExpiryDate,
+      },
+    });
+
+    // Create a new transaction
+    const newTransaction = await prisma.core_membertransaction.create({
+      data: {
+        member_id: member.user_id,
+        category: paymentFor,
+        amount: parseFloat(amountKWD),
+        date: new Date(date),
+        remarks: remarks || null,
+      },
+    });
+
+    res.status(201).json({
+      message: "Transaction added successfully.",
+      transaction: newTransaction,
+    });
+  } catch (error) {
+    console.error("Error adding transaction:", error);
+    res.status(500).json({
+      error: "An error occurred while adding the transaction.",
+    });
+  }
+};
+
+  
+
+
+
+  export const getTransactionofIndividual = async (req, res) => {
+    try {
+      const { id } = req.params; // UID from route parameter
+  
+      // Validate UID
+      if (!id) {
+        return res.status(400).json({ error: "UID is required." });
+      }
+  
+      // Fetch transaction details using UID
+      const transaction = await prisma.core_membertransaction.findUnique({
+        where: {
+          id: BigInt(id), // Ensure `id` matches the database's schema type
+        },
+        include: {
+          core_kwsmember: {
+            select: {
+              user_id: true,
+              kwsid: true,
+              first_name: true,
+              last_name: true,
+              card_printed_date: true,
+              card_expiry_date: true,
+            },
+          },
+        },
+      });
+  
+      // If transaction not found
+      if (!transaction) {
+        return res.status(404).json({ error: "Transaction not found." });
+      }
+  
+      // Function to check and format the date
+      const formatDate = (date) => {
+        if (!date) return "Not Available";
+        
+        // Print raw date to the console for debugging
+        console.log("Raw date:", date);
+  
+        // Try to parse the date using Date.parse() or the Date constructor
+        const parsedDate = new Date(date);
+  
+        // Print parsed date object to see what we get
+        console.log("Parsed Date:", parsedDate);
+  
+        // Check if the parsed date is invalid
+        if (isNaN(parsedDate)) {
+          console.error(`Invalid date format: ${date}`);
+          return "Invalid Date"; // Return 'Invalid Date' for invalid date
+        }
+  
+        // Manually format the date to "YYYY-MM-DD" (ISO format without time)
+        const formattedDate = parsedDate.toISOString().split('T')[0]; // "2025-01-01"
+        
+        return formattedDate; // Return the formatted date without time
+      };
+  
+      // Format the response
+      const transactionDetails = {
+        UID: transaction.id.toString().padStart(8, "0"), // Pad with leading zeros
+        KWSID: transaction.core_kwsmember?.kwsid || "N/A",
+        Name: `${transaction.core_kwsmember?.first_name || "N/A"} ${transaction.core_kwsmember?.last_name || ""}`,
+        Category: transaction.category,
+        CardPrintedDate: formatDate(transaction.card_printed_date),
+        CardExpiryDate: formatDate(transaction.card_expiry_date),
+        AmountKWD: parseFloat(transaction.amount).toFixed(3),
+        Date: formatDate(transaction.date),
+        Remarks: transaction.remarks || "No Remarks",
+      };
+  
+      // Respond with transaction details
+      res.status(200).json(transactionDetails);
+    } catch (error) {
+      console.error("Error fetching transaction details:", error);
+      res.status(500).json({ error: "An error occurred while fetching transaction details." });
+    }
+  };
+  
+  
+
+
+  
+  export const editTransactionofIndividual = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        category,
+        cardPrintedDate,
+        cardExpiryDate,
+        amountKWD,
+        date,
+        remarks,
+      } = req.body;
+  
+      // Validate transaction_id
+      if (!id) {
+        return res.status(400).json({ error: "Transaction ID is required." });
+      }
+  
+      // Validate that at least one field to update is provided
+      if (
+        !category &&
+        !cardPrintedDate &&
+        !cardExpiryDate &&
+        !amountKWD &&
+        !date &&
+        !remarks
+      ) {
+        return res.status(400).json({ error: "At least one field to update must be provided." });
+      }
+  
+      // Build the update data for core_membertransaction
+      const updateData = {};
+      if (category) updateData.category = category;
+      if (amountKWD !== undefined) updateData.amount = parseFloat(amountKWD);
+      if (date) updateData.date = new Date(date);
+      if (remarks !== undefined) updateData.remarks = remarks;
+  
+      // Log the update data for debugging purposes
+      console.log("Transaction Update Data:", updateData);
+  
+      // Update the transaction in the database
+      const updatedTransaction = await prisma.core_membertransaction.update({
+        where: {
+          id: BigInt(id), // Ensure transaction_id matches your schema type
+        },
+        data: updateData,
+      });
+  
+      // Update related fields in core_kwsmember
+      if (cardPrintedDate || cardExpiryDate) {
+        const updateCoreMemberData = {};
+  
+        if (cardPrintedDate !== null) {
+          updateCoreMemberData.card_printed_date = cardPrintedDate ? new Date(cardPrintedDate) : null;
+        }
+  
+        if (cardExpiryDate !== null) {
+          updateCoreMemberData.card_expiry_date = cardExpiryDate ? new Date(cardExpiryDate) : null;
+        }
+  
+        // Update the core_kwsmember related data
+        if (Object.keys(updateCoreMemberData).length > 0) {
+          await prisma.core_kwsmember.update({
+            where: { user_id: updatedTransaction.member_id }, // Use the member_id from the transaction
+            data: updateCoreMemberData,
+          });
+        }
+      }
+  
+      res.status(200).json({
+        message: "Transaction and related member updated successfully.",
+        transaction: updatedTransaction,
+      });
+    } catch (error) {
+      console.error("Error updating transaction:", error);
+      res.status(500).json({ error: "An error occurred while updating the transaction." });
+    }
+  };
+  
+  
+  export const deleteTransactionofIndividual = async (req, res) => {
+    try {
+      const { id } = req.params; // UID to identify the transaction to delete
+  
+      // Validate UID
+      if (!id) {
+        return res.status(400).json({ error: "UID is required." });
+      }
+  
+      // Attempt to delete the transaction
+      const deletedTransaction = await prisma.core_membertransaction.delete({
+        where: {
+          id: BigInt(id), // Convert UID to BigInt if your schema requires it
+        },
+      });
+  
+      res.status(200).json({
+        message: "Transaction deleted successfully.",
+        transaction: deletedTransaction,
+      });
+    } catch (error) {
+      console.error("Error deleting transaction:", error);
+  
+      // Check if the error is due to a non-existent transaction
+      if (error.code === "P2025") {
+        return res.status(404).json({
+          error: "Transaction not found. It may have already been deleted.",
+        });
+      }
+  
+      res.status(500).json({ error: "An error occurred while deleting the transaction." });
+    }
+  };
+  
+
+
+
+
+
+
+
+  export const getTransactionslogs = async (req, res) => {
+    try {
+      const { id } = req.params; // Fetching the UID from the route parameter
+  
+      // Check if id (UID) is provided
+      if (!id || id === 'undefined') {
+        return res.status(400).json({ error: "Valid User ID (UID) is required." });
+      }
+  
+      // Step 1: Find the member_id by using the UID from the core_membertransaction schema
+      const memberTransaction = await prisma.core_membertransaction.findUnique({
+        where: {
+          id: BigInt(id), // Fetch the transaction using the UID (id)
+        },
+        select: {
+          id: true,
+          member_id: true, // Get member_id from the transaction
+        },
+      });
+  
+      // Step 2: Check if the transaction exists
+      if (!memberTransaction) {
+        return res.status(404).json({ error: "No transaction found with the provided UID." });
+      }
+  
+      // Step 3: Fetch user details from core_kwsmember schema using member_id
+      const user = await prisma.core_kwsmember.findUnique({
+        where: {
+          user_id: memberTransaction.member_id, // Use member_id to fetch user
+        },
+        select: {
+          user_id: true,
+          first_name: true,
+          last_name: true,
+          email: true,
+          kwsid: true,
+        },
+      });
+  
+      // Step 4: Fetch all transactions for the `member_id` (from the core_membertransaction schema)
+      const transactions = await prisma.core_membertransaction.findMany({
+        where: {
+          member_id: memberTransaction.member_id, // Use member_id to fetch all transactions
+        },
+        orderBy: {
+          date: "desc", // Sort transactions by the most recent
+        },
+        select: {
+          id: true,
+          category: true,
+          amount: true,
+          date: true,
+          remarks: true,
+        },
+      });
+  
+      // Step 5: Format dates for each transaction before sending the response
+      const formattedTransactions = transactions.map((transaction) => ({
+        ...transaction,
+        date: new Date(transaction.date).toLocaleDateString('en-GB', { // Use 'en-GB' locale for date format
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }), // Format date as "1 June 2024"
+      }));
+  
+      // Step 6: Respond with the user's details and the formatted transaction logs
+      res.status(200).json({ user: user, transactions: formattedTransactions });
+    } catch (error) {
+      console.error("Error fetching transaction logs:", error);
+      res.status(500).json({ error: "An error occurred while fetching transaction logs." });
+    }
+  };
+  

@@ -1,5 +1,6 @@
 import argon2 from "argon2";
-
+import cookie from "cookie";
+import jwt from "jsonwebtoken";
 import prisma from '../prismaClient.js';
 
 
@@ -418,15 +419,36 @@ export const loginUser = async (req, res) => {
     // Convert BigInt fields to strings (if necessary)
     const userId = user.id.toString();
 
-    // Successful login
+    // Retrieve staff roles from the user data
+    const staffRoles = user.staff_roles;
+    console.log("Staff roles:", staffRoles); // Check if staff roles are being retrieved correctly
+
+    // Generate JWT token with staff_roles included in the payload
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        staffRoles: staffRoles,  // Include the roles in the JWT payload
+      },
+      process.env.JWT_SECRET, // Use the secret key from environment variables
+      { expiresIn: "1h" } // Set token expiry time (e.g., 1 hour)
+    );
+
+    // Set JWT token as HTTP-only cookie
+    res.setHeader("Set-Cookie", cookie.serialize("token", token, {
+      httpOnly: true, // Ensures the cookie can't be accessed by JavaScript
+      secure: process.env.NODE_ENV === "production", // Set to true in production for HTTPS
+      maxAge: 60 * 60, // 1 hour
+      path: "/",
+    }));
+
+    // Send the successful login response
     return res.status(200).json({
       message: "Login successful",
-      user: { id: userId, username: user.username },
+      user: { id: userId, username: user.username, staffRoles: user.staff_roles },
     });
   } catch (error) {
     console.error("Error during login:", error.message);
     return res.status(500).json({ message: "Server error during login" });
   }
 };
-
-

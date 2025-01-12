@@ -4,8 +4,11 @@ const prisma = new PrismaClient();
 
 export const generateNextKwsId = async () => {
   try {
+    // Default start number
+    let nextIdNumber = 5000;
+
     // Fetch the latest KWS ID from the database
-    const lastMember = await prisma.core_kwsmember.findFirst({
+    let lastMember = await prisma.core_kwsmember.findFirst({
       where: {
         kwsid: {
           not: null,
@@ -16,7 +19,6 @@ export const generateNextKwsId = async () => {
       },
     });
 
-    let nextIdNumber = 5000; // Default start number
     if (lastMember && lastMember.kwsid) {
       const lastIdNumber = parseInt(lastMember.kwsid.replace("KWSKW", ""), 10);
       if (!isNaN(lastIdNumber)) {
@@ -24,9 +26,21 @@ export const generateNextKwsId = async () => {
       }
     }
 
-    // Generate the new KWS ID
-    const nextKwsId = `KWSKW${String(nextIdNumber).padStart(5, "0")}`;
+    let nextKwsId = `KWSKW${String(nextIdNumber).padStart(5, "0")}`;
+
+    // Check if the generated KWS ID already exists in the database
+    while (await prisma.core_kwsmember.findFirst({
+      where: {
+        kwsid: nextKwsId,
+      },
+    })) {
+      nextIdNumber += 1;
+      nextKwsId = `KWSKW${String(nextIdNumber).padStart(5, "0")}`;
+    }
+
+    // Return the unique KWS ID
     return nextKwsId;
+
   } catch (error) {
     console.error("Error generating next KWS ID:", error);
     throw new Error("Failed to generate the next KWS ID.");

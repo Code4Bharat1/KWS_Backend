@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { updateApprovalStatus,getPendingApprovals, getAllMembers} from '../controllers/memberController.js'
+import { updateApprovalStatus,getPendingApprovals, getAllMembers,getChart} from '../controllers/memberController.js'
 import {uploadFiles } from '../middleware/fileUpload.js';
 
 const router  = Router();
@@ -9,5 +9,8 @@ router.put('/update/:user_id', uploadFiles,updateApprovalStatus);
 
 
 router.get('/getmembers', getAllMembers);
+
+router.get('/getchart', getChart);
+
 
 export default router;

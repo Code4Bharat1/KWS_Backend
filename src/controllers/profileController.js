@@ -1,5 +1,7 @@
-import { PrismaClient } from "@prisma/client";
 
+import { PrismaClient } from "@prisma/client";
+import path from 'path';
+import fs from 'fs';
 const prisma = new PrismaClient();
 
 export const getProfile = async (req, res) => {
@@ -37,7 +39,7 @@ export const getProfile = async (req, res) => {
       return res.status(404).json({ error: "User not found." });
     }
 
-    console.log("Database User Data:", user);
+
 
     const response = {
       username: user.username,
@@ -62,3 +64,218 @@ export const getProfile = async (req, res) => {
     return res.status(500).json({ error: "An error occurred while fetching the user profile." });
   }
 };
+
+
+
+
+export const editProfile = async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    if (!user_id) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
+
+    let parsedUserId;
+    try {
+      parsedUserId = BigInt(user_id);
+    } catch (err) {
+      return res.status(400).json({ error: "User ID must be a valid number." });
+    }
+
+    const { profile_picture, form_scanned, application_date, ...otherFields } = req.body;
+    const updateData = { ...otherFields };
+
+
+    if (application_date) {
+      const parsedDate = new Date(application_date);
+      if (isNaN(parsedDate)) {
+        return res.status(400).json({ error: "Invalid application_date format. Expected ISO-8601 DateTime." });
+      }
+      updateData.application_date = parsedDate; // Valid ISO-8601 DateTime
+    }
+
+    if (req.files && req.files.profile_picture && req.files.profile_picture.length > 0) {
+      const profilePic = req.files.profile_picture[0];
+      const uploadDir = path.resolve("uploads/profile-pictures");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const uploadPath = path.join(uploadDir, profilePic.filename);
+      fs.renameSync(profilePic.path, uploadPath);
+      updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
+    }
+
+    // Handle form scanned upload
+    if (req.files && req.files.form_scanned && req.files.form_scanned.length > 0) {
+      const scannedForm = req.files.form_scanned[0];
+      const uploadDir = path.resolve("uploads/form-scanned");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const uploadPath = path.join(uploadDir, scannedForm.filename);
+      fs.renameSync(scannedForm.path, uploadPath);
+      updateData.form_scanned = `uploads/form-scanned/${scannedForm.filename}`;
+    }
+
+    // Update the user data in Prisma
+    const updatedUser = await prisma.core_kwsmember.update({
+      where: { user_id: parsedUserId },
+      data: {
+        ...updateData, // Update all fields in the `updateData` object
+      },
+    });
+
+    return res.status(200).json({ message: "User profile updated successfully", user: updatedUser });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return res.status(500).json({ error: "An error occurred while updating the user profile." });
+  }
+};
+
+
+
+
+
+export const getProfileAllDetails = async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    if (!user_id) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
+
+    let parsedUserId;
+    try {
+      parsedUserId = BigInt(user_id);
+    } catch (error) {
+      console.error("Failed to parse user_id to BigInt:", user_id, error);
+      return res.status(400).json({ error: "User ID must be a valid number." });
+    }
+
+    // Fetch member details
+    const coreKwsMember = await prisma.core_kwsmember.findUnique({
+      where: {
+        user_id: parsedUserId,
+      },
+      select: {
+        civil_id: true,
+        user_id: true,
+        kwsid: true,
+        first_name: true,
+        email: true,
+        form_scanned: true,
+        middle_name: true,
+        last_name: true,
+        type_of_member: true,
+        profile_picture: true,
+        dob: true,
+        type_of_member:true,
+        card_expiry_date:true,
+        gender: true,
+        blood_group: true,
+        education_qualification: true,
+        profession: true,
+        kuwait_contact: true,
+        kuwait_whatsapp: true,
+        marital_status: true,
+        family_in_kuwait: true,
+        flat_no: true,
+        floor_no: true,
+        block_no: true,
+        building_name_no: true,
+        street_no_name: true,
+        area: true,
+        residence_complete_address: true,
+        pin_no_india: true,
+        mohalla_village: true,
+        taluka: true,
+        district: true,
+        native_pin_no: true,
+        indian_contact_no_1: true,
+        indian_contact_no_2: true,
+        indian_contact_no_3: true,
+        emergency_name_kuwait: true,
+        emergency_contact_kuwait: true,
+        emergency_name_india: true,
+        emergency_contact_india: true,
+        father_name: true,
+        mother_name: true,
+        spouse_name: true,
+        child_name_1: true,
+        child_name_2: true,
+        child_name_3: true,
+        child_name_4: true,
+        child_name_5: true,
+        additional_information: true,
+        full_name_1: true,
+        relation_1: true,
+        percentage_1: true,
+        mobile_1: true,
+        full_name_2: true,
+        relation_2: true,
+        percentage_2: true,
+        mobile_2: true,
+        full_name_3: true,
+        relation_3: true,
+        percentage_3: true,
+        mobile_3: true,
+        full_name_4: true,
+        relation_4: true,
+        percentage_4: true,
+        mobile_4: true,
+        application_date: true,
+        admin_charges: true,
+        amount_in_kwd: true,
+        form_received_by: true,
+        form_scanned: true,
+        card_printed: true,
+        card_printed_date: true,
+        card_expiry_date: true,
+        zone_member: true,
+        follow_up_member: true,
+        office_comments: true,
+      },
+    });
+
+    if (!coreKwsMember) {
+      return res.status(404).json({ error: "No record found with the provided User ID." });
+    }
+
+    // Format date fields
+    const formatDate = (date) => {
+      if (!date) return null;
+      const formattedDate = new Date(date).toISOString().split("T")[0];
+      return formattedDate;
+    };
+
+    coreKwsMember.dob = formatDate(coreKwsMember.dob);
+    coreKwsMember.application_date = formatDate(coreKwsMember.application_date);
+    coreKwsMember.card_printed_date = formatDate(coreKwsMember.card_printed_date);
+    coreKwsMember.card_expiry_date = formatDate(coreKwsMember.card_expiry_date);
+
+    if (coreKwsMember.profile_picture) {
+      coreKwsMember.profile_picture = `${req.protocol}://${req.get(
+        "host"
+      )}${coreKwsMember.profile_picture}`;
+    }
+
+    if (coreKwsMember.form_scanned) {
+      coreKwsMember.form_scanned = `${req.protocol}://${req.get(
+        "host"
+      )}${coreKwsMember.form_scanned}`;
+    }
+
+    return res.status(200).json({ data: coreKwsMember });
+  } catch (error) {
+    console.error("Error fetching core_kwsmember details:", error);
+    return res.status(500).json({ error: "An error occurred while fetching the details." });
+  }
+};
+
+
+
+
+export const editUser = async (req, res) => {
+  
+}
