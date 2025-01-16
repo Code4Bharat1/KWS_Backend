@@ -390,7 +390,7 @@ export const editUser = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { username, password } = req.body;
 
-  console.log("Login request received:", { username, password });
+  // console.log("Login request received:", { username, password });
 
   if (!username || !password) {
     return res.status(400).json({ message: "Username and password are required" });
@@ -407,18 +407,18 @@ export const loginUser = async (req, res) => {
 
     // Retrieve and clean the hash
     let hashedPassword = user.password.trim();
-    console.log("Retrieved hash from DB (before cleanup):", hashedPassword);
+    // console.log("Retrieved hash from DB (before cleanup):", hashedPassword);
 
     // Remove the `argon2` prefix if present
     if (hashedPassword.startsWith('argon2$')) {
       hashedPassword = hashedPassword.replace(/^argon2/, ''); // Remove the `argon2` prefix
     }
 
-    console.log("Cleaned hash for verification:", hashedPassword);
+    // console.log("Cleaned hash for verification:", hashedPassword);
 
     // Verify password against the cleaned and prepared hash
     const isMatch = await argon2.verify(`${hashedPassword}`, password);
-    console.log("Password verification result:", isMatch);
+    // console.log("Password verification result:", isMatch);
 
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -429,7 +429,7 @@ export const loginUser = async (req, res) => {
 
     // Retrieve staff roles from the user data
     const staffRoles = user.staff_roles;
-    console.log("Staff roles:", staffRoles); // Check if staff roles are being retrieved correctly
+    // console.log("Staff roles:", staffRoles); // Check if staff roles are being retrieved correctly
 
     // Generate JWT token with staff_roles included in the payload
     const token = jwt.sign(

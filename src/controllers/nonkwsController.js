@@ -226,8 +226,8 @@ export const editnonkwsmember = async (req, res) => {
     const parsedId = BigInt(cleanedId); // Convert ID to BigInt
 
     // Log to ensure the correct data is being sent
-    console.log("Request data:", req.body);
-    console.log("Parsed ID:", parsedId);
+    // console.log("Request data:", req.body);
+    // console.log("Parsed ID:", parsedId);
 
     // Find the non-KWS member to edit
     const nonKwsMember = await prisma.core_nonkwsmember.findUnique({
@@ -265,7 +265,7 @@ export const editnonkwsmember = async (req, res) => {
     if (area !== undefined) updateData.area = area;
 
     // Log the update data before the update query
-    console.log("Update Data:", updateData);
+    // console.log("Update Data:", updateData);
 
     // Update the non-KWS member with the new data
     const updatedNonKwsMember = await prisma.core_nonkwsmember.update({
@@ -273,7 +273,7 @@ export const editnonkwsmember = async (req, res) => {
       data: updateData,  // Update only the fields that were passed in the request body
     });
 
-    console.log("Updated member:", updatedNonKwsMember);
+    // console.log("Updated member:", updatedNonKwsMember);
 
     // Send the updated member data as the response
     res.status(200).json(updatedNonKwsMember);
@@ -325,7 +325,7 @@ export const logsnonkwsmember = async (req, res) => {
     const parsedId = BigInt(cleanedId);  // Convert the cleaned ID to BigInt
 
     // Log the cleaned and parsed ID for debugging
-    console.log("Parsed ID:", parsedId);
+    // console.log("Parsed ID:", parsedId);
 
     // Fetch logs using the cleaned and parsed account_id
     const logs = await prisma.core_auditnonkwsmember.findMany({

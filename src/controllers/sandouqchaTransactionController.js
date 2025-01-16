@@ -388,7 +388,7 @@ export const editTransaction = async (req, res) => {
       } = req.body;
 
       // Log the collectedByKwsid for debugging:
-      console.log("Received collectedByKwsid:", collectedByKwsid);
+      // console.log("Received collectedByKwsid:", collectedByKwsid);
 
       // If a new transaction slip file is uploaded, build its URL;
       // if not, leave the field unchanged.
@@ -587,7 +587,7 @@ export const bulkTransaction = async (req, res) => {
           }
         });
 
-        console.log("Searching for member with kwsid:", collectedByKwsid);
+        // console.log("Searching for member with kwsid:", collectedByKwsid);
 
         if (!member) {
           errors.push({ transactionId, message: `Invalid collectedByKwsid for transaction: ${collectedByKwsid}` });

@@ -106,7 +106,7 @@ export const updateApprovalStatus = async (req, res) => {
       const results = await prisma.$transaction(transaction);
       updatedMember = results[0];
       updatedUser = results[1];
-      console.log(`Successfully updated username for user ID ${userId} to ${updatedUser.username}`);
+      // console.log(`Successfully updated username for user ID ${userId} to ${updatedUser.username}`);
     } catch (transactionError) {
       console.error("Transaction failed:", transactionError.message);
       return res.status(500).json({ message: "Failed to update user information." });
@@ -115,7 +115,7 @@ export const updateApprovalStatus = async (req, res) => {
     if (membership_status.toLowerCase() === "approved") {
       try {
         await sendApprovalEmail(updatedUser.email, newKwsId);
-        console.log("Approval email sent successfully.");
+        // console.log("Approval email sent successfully.");
       } catch (emailError) {
         console.error("Error sending approval email:", emailError.message);
       }

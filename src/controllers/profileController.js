@@ -56,7 +56,7 @@ export const getProfile = async (req, res) => {
         : null,
     };
 
-    console.log("Constructed Response:", response);
+    // console.log("Constructed Response:", response);
 
     return res.status(200).json({ user: response });
   } catch (error) {

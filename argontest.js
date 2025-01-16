@@ -10,7 +10,7 @@ const plainPassword = "Mud@ssirs472"; // Plain password provided by user
   try {
     // Verify if the plaintext password matches the stored hash
     const isMatch = await argon2.verify(hashFromDB, plainPassword);
-    console.log('Password match:', isMatch); // Expected: true
+    // console.log('Password match:', isMatch); // Expected: true
   } catch (error) {
     console.error('Error during verification:', error.message);
   }

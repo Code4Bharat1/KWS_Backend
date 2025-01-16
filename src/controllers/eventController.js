@@ -355,7 +355,7 @@ export const getAttendanceList = async (req, res) => {
   try {
     const { event_id } = req.params; // Get event_id from the route parameters
 
-    console.log("Received Event ID:", event_id);
+    // console.log("Received Event ID:", event_id);
 
     if (!event_id) {
       return res.status(400).json({ message: "Event ID is required" });
@@ -432,7 +432,7 @@ export const markAttendance = async (req, res) => {
   try {
     const { event_id, ticket_no } = req.body;
 
-    console.log("Incoming Request Body:", req.body);
+    // console.log("Incoming Request Body:", req.body);
 
     if (!event_id || !ticket_no) {
       return res.status(400).json({ error: "Event ID and Ticket No are required." });

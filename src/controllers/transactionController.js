@@ -440,13 +440,13 @@ export const getTransactionofIndividual = async (req, res) => {
       if (!date) return "Not Available";
 
       // Print raw date to the console for debugging
-      console.log("Raw date:", date);
+      // console.log("Raw date:", date);
 
       // Try to parse the date using Date.parse() or the Date constructor
       const parsedDate = new Date(date);
 
       // Print parsed date object to see what we get
-      console.log("Parsed Date:", parsedDate);
+      // console.log("Parsed Date:", parsedDate);
 
       // Check if the parsed date is invalid
       if (isNaN(parsedDate)) {
@@ -532,7 +532,7 @@ export const viewlogs = async (req, res) => {
     }
 
     const userId = parseInt(uid, 10);
-    console.log("Fetching logs for User ID:", userId);
+    // console.log("Fetching logs for User ID:", userId);
 
     // Fetch logs for the specified user
     const logs = await prisma.core_auditmembertransactions.findMany({
@@ -546,7 +546,7 @@ export const viewlogs = async (req, res) => {
       return res.status(404).json({ error: "No logs found for this user." });
     }
 
-    console.log("Fetched logs:", logs);
+    // console.log("Fetched logs:", logs);
 
     // Extract the committed ID from the first log
     const C_id = parseInt(logs[0].committed_id, 10);
@@ -565,7 +565,7 @@ export const viewlogs = async (req, res) => {
         .json({ error: "Member details for the committed action not found." });
     }
 
-    console.log("Member details:", memberwhodone);
+    // console.log("Member details:", memberwhodone);
 
     // Format logs
     const formattedLogs = logs.map((log) => ({
