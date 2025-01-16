@@ -83,10 +83,19 @@ export const editProfile = async (req, res) => {
       return res.status(400).json({ error: "User ID must be a valid number." });
     }
 
-    const { profile_picture, form_scanned, application_date, ...otherFields } = req.body;
+    const { profile_picture, form_scanned, application_date, dob, ...otherFields } = req.body;
     const updateData = { ...otherFields };
 
+    // Validate and parse dob (date of birth)
+    if (dob) {
+      const parsedDob = new Date(dob);
+      if (isNaN(parsedDob)) {
+        return res.status(400).json({ error: "Invalid dob format. Expected ISO-8601 DateTime." });
+      }
+      updateData.dob = parsedDob.toISOString(); // Ensure ISO-8601 DateTime format
+    }
 
+    // Validate and parse application_date
     if (application_date) {
       const parsedDate = new Date(application_date);
       if (isNaN(parsedDate)) {
@@ -95,6 +104,7 @@ export const editProfile = async (req, res) => {
       updateData.application_date = parsedDate; // Valid ISO-8601 DateTime
     }
 
+    // Handle profile_picture upload
     if (req.files && req.files.profile_picture && req.files.profile_picture.length > 0) {
       const profilePic = req.files.profile_picture[0];
       const uploadDir = path.resolve("uploads/profile-pictures");
@@ -106,7 +116,7 @@ export const editProfile = async (req, res) => {
       updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
 
-    // Handle form scanned upload
+    // Handle form_scanned upload
     if (req.files && req.files.form_scanned && req.files.form_scanned.length > 0) {
       const scannedForm = req.files.form_scanned[0];
       const uploadDir = path.resolve("uploads/form-scanned");
@@ -276,6 +286,123 @@ export const getProfileAllDetails = async (req, res) => {
 
 
 
+/**
+ * Creates a new update request based on the incoming form data.
+ * The updateData is saved as JSON in the `data` field and linked to a member.
+ */
 export const editUser = async (req, res) => {
-  
-}
+  try {
+    // Expecting member_id and all updated form fields in req.body
+    const memberId = req.body.member_id;
+    const updateData = req.body; // Contains the entire update payload
+
+    // Validate input
+    if (!memberId || !updateData) {
+      return res.status(400).json({ message: "Missing required update data." });
+    }
+
+    // Create a new update request record in core_informationupdate.
+    const newUpdateRequest = await prisma.core_informationupdate.create({
+      data: {
+        requested_date: new Date(),
+        updated_date: new Date(), // This can be updated upon processing, if desired.
+        processed: false,
+        data: updateData, // Save the entire update payload as JSON.
+        member_id: memberId,
+      },
+    });
+
+    return res.status(201).json({
+      message: "Update request created successfully.",
+      updateRequest: newUpdateRequest,
+    });
+  } catch (error) {
+    console.error("Error in editUser:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error during update request." });
+  }
+};
+
+/**
+ * Returns all pending update requests.
+ */
+export const getUpdateRequests = async (req, res) => {
+  try {
+    const requests = await prisma.core_informationupdate.findMany({
+      where: { processed: false },
+      orderBy: { requested_date: "desc" },
+    });
+
+    return res.status(200).json({
+      message: "Pending update requests retrieved successfully.",
+      updateRequests: requests,
+    });
+  } catch (error) {
+    console.error("Error in getUpdateRequests:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error retrieving update requests." });
+  }
+};
+
+/**
+ * Approves an update request:
+ *  - Reads the stored JSON update data.
+ *  - Updates the corresponding member in core_kwsmember.
+ *  - Marks the update request as processed.
+ */
+export const approveUpdateRequest = async (req, res) => {
+  try {
+    const { updateRequestId, approved_by } = req.body;
+    
+    // Fetch the update request record by its id.
+    const updateRequest = await prisma.core_informationupdate.findUnique({
+      where: { id: Number(updateRequestId) },
+    });
+
+    if (!updateRequest) {
+      return res.status(404).json({ message: "Update request not found." });
+    }
+
+    if (updateRequest.processed) {
+      return res
+        .status(400)
+        .json({ message: "This update request has already been processed." });
+    }
+
+    // Extract the stored update data and member id.
+    const { data: updateData, member_id } = updateRequest;
+
+    // Update the member data in core_kwsmember.
+    // Ensure that the keys in updateData match the columns of core_kwsmember.
+    const updatedMember = await prisma.core_kwsmember.update({
+      where: { user_id: Number(member_id) },
+      data: {
+        ...updateData,
+      },
+    });
+
+    // Mark the update request as processed.
+    const processedRequest = await prisma.core_informationupdate.update({
+      where: { id: Number(updateRequestId) },
+      data: {
+        processed: true,
+        updated_date: new Date(),
+        approved_by: approved_by || null,
+      },
+    });
+
+    return res.status(200).json({
+      message:
+        "Update request approved and member data updated successfully.",
+      updatedMember,
+      processedRequest,
+    });
+  } catch (error) {
+    console.error("Error in approveUpdateRequest:", error.message);
+    return res
+      .status(500)
+      .json({ message: "Server error during update approval." });
+  }
+};

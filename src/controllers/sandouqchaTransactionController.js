@@ -97,7 +97,7 @@ export const getTransactionList = async (req, res) => {
 
       return {
         id: transaction.id,
-        transactionId: transaction.transaction_id,
+        transactionId: transaction.TID,
         status: transaction.status,
         date: transaction.date.toISOString().split("T")[0], // Format date
         boxNumber: transaction.core_sandouqchaboxholder?.number || "Unknown", // Display the box number
@@ -108,7 +108,7 @@ export const getTransactionList = async (req, res) => {
         zone,
         holderContact,
         total: parseFloat(total.toFixed(3)), // Round total to 3 decimal places
-        transactionSlip: transaction.transaction_slip || null,
+        transactionSlip: transaction.slip || null,
       };
     });
 
@@ -150,6 +150,7 @@ export const addTransaction = async (req, res) => {
         coin_20,
         coin_10,
         coin_5,
+        // Do not use status from req.body as it is being overwritten with "Pending"
       } = req.body;
 
       // Handle the transaction slip file URL
@@ -159,9 +160,7 @@ export const addTransaction = async (req, res) => {
 
       // Validate required fields
       if (!transactionId || !date || !boxId || !collectedByKwsid) {
-        return res
-          .status(400)
-          .json({ error: "Transaction ID, Date, boxId, and collectedByKwsid are required." });
+        return res.status(400).json({ error: "Transaction ID, Date, boxId, and collectedByKwsid are required." });
       }
 
       // Convert boxId to a number
@@ -192,7 +191,7 @@ export const addTransaction = async (req, res) => {
       // Create a new transaction entry with proper type conversion for numeric fields
       const newTransaction = await prisma.core_sandouqchatransaction.create({
         data: {
-          transaction_id: transactionId,
+          TID: transactionId,
           date: new Date(date),
           box_id: boxHolder.id, // Using the resolved box holder ID
           collected_by_id: member.user_id, // Using the resolved member user ID
@@ -207,7 +206,8 @@ export const addTransaction = async (req, res) => {
           coin_20: parseInt(coin_20, 10) || 0,
           coin_10: parseInt(coin_10, 10) || 0,
           coin_5: parseInt(coin_5, 10) || 0,
-          transaction_slip: transactionSlipUrl, // Store the file URL here
+          slip: transactionSlipUrl, // Store the file URL here
+          status: "Pending",  // Set status as "Pending"
         },
       });
 
@@ -321,13 +321,13 @@ export const viewTransaction = async (req, res) => {
 
     const response = {
       id: transaction.id,
-      transactionId: transaction.transaction_id, // Transaction ID
+      transactionId: transaction.TID, // Transaction ID
       date: transaction.date.toISOString().split("T")[0], // Format date as YYYY-MM-DD
       boxNumber: transaction.core_sandouqchaboxholder?.number || "",
       collectedByKwsid: collectedBy,
       holderName: holderName,
       // If you need to include the file URL for the transaction slip:
-      transactionSlipUrl: transaction.transaction_slip || "",
+      transactionSlipUrl: transaction.slip || "",
       notes: {
         note_20: transaction.note_20,
         note_10: transaction.note_10,
@@ -439,7 +439,7 @@ export const editTransaction = async (req, res) => {
 
       // Only update the transaction_slip field if a new file was uploaded.
       if (transactionSlipUrl !== undefined) {
-        updateData.transaction_slip = transactionSlipUrl;
+        updateData.slip = transactionSlipUrl;
       }
 
       // Update the transaction in the database
@@ -600,7 +600,7 @@ export const bulkTransaction = async (req, res) => {
         try {
           await prisma.core_sandouqchatransaction.create({
             data: {
-              transaction_id: transactionId,
+              TID: transactionId,
               date: new Date(date),
               box_id: boxHolder.id,
               collected_by_id: user_id, // Store user_id instead of kwsid
@@ -617,7 +617,7 @@ export const bulkTransaction = async (req, res) => {
               coin_5: parseInt(coin_5, 10) || 0,
             },
           });
-          createdTransactions.push({ transaction_id: transactionId, box_id: boxId, collected_by_id: user_id });
+          createdTransactions.push({ TID: transactionId, box_id: boxId, collected_by_id: user_id });
         } catch (error) {
           errors.push({ transactionId, message: `Failed to create transaction: ${error.message}` });
         }

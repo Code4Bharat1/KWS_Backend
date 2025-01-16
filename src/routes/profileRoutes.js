@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProfile, editProfile,getProfileAllDetails ,editUser} from '../controllers/profileController.js';
+import { getProfile, editProfile,getProfileAllDetails ,editUser,getUpdateRequests,approveUpdateRequest} from '../controllers/profileController.js';
 import {uploadFiles } from '../middleware/fileUpload.js';
 const router = Router();
 
@@ -14,7 +14,15 @@ router.put('/editprofile/:user_id',uploadFiles, editProfile);
   router.get('/get/:user_id',getProfileAllDetails);
 
 
-  router.get('/edit/:user_id', editUser);
+  router.put('/edit', editUser);
+
+  router.get("/updates", getUpdateRequests);
+
+
+  router.post("/approve", approveUpdateRequest);
+
+
+
 
 
 export default router;

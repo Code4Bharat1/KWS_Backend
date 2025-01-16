@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import prisma from '../prismaClient.js';
 
 
+
 // register user (add)
 BigInt.prototype.toJSON = function () {
   return this.toString();
@@ -88,11 +89,11 @@ export const registerUser = async (req, res) => {
       return res.status(400).json({ message: "Civil ID already registered." });
     }
 
-    // Hash the password
+    // Hash the password and add a prefix
     const hashedPassword = await argon2.hash(password);
     const hashedPasswordWithPrefix = `argon2${hashedPassword}`;
 
-    // Create the user
+    // Create the user record
     const newUser = await prisma.users_user.create({
       data: {
         email,
@@ -106,7 +107,7 @@ export const registerUser = async (req, res) => {
       },
     });
 
-    // Parse child names
+    // Parse child names (up to 5)
     const [child_name_1, child_name_2, child_name_3, child_name_4, child_name_5] = child_names;
 
     // Parse nominations
@@ -117,12 +118,19 @@ export const registerUser = async (req, res) => {
       [`mobile_${index + 1}`]: nomination?.contact || null,
     }));
 
-    // Flatten nomination data
+    // Flatten nomination data into a single object
     const flattenedNominations = nominationsData.reduce((acc, curr) => {
       return { ...acc, ...curr };
     }, {});
 
-    // Create the member
+    // Extract the profile picture file path if uploaded
+    let profile_picture = null;
+    if (req.files && req.files.profile_picture && req.files.profile_picture.length > 0) {
+      // Save the relative path or URL as needed
+      profile_picture = req.files.profile_picture[0].path;
+    }
+
+    // Create the member record
     const newMember = await prisma.core_kwsmember.create({
       data: {
         user_id: newUser.id,
@@ -167,13 +175,14 @@ export const registerUser = async (req, res) => {
         child_name_4,
         child_name_5,
         additional_information,
+        profile_picture, // Save the profile picture path
         ...flattenedNominations,
         application_date: new Date(),
         updated_date: new Date(),
         membership_status: "pending",
       },
       include: {
-        users_user: true, // Fetch the linked user
+        users_user: true, // Fetch the linked user if needed
       },
     });
 
@@ -187,7 +196,6 @@ export const registerUser = async (req, res) => {
     return res.status(500).json({ message: "Server error during registration." });
   }
 };
-
 
 
 // get a user (find)

@@ -7,14 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Product {
-  id          Int      @id @default(autoincrement())
-  name        String
-  description String?
-  price       Float
-  createdAt   DateTime @default(now())
-}
-
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model account_emailaddress {
   id                        Int                         @id @default(autoincrement())
@@ -178,6 +170,7 @@ model core_auditmembertransactions {
   committed_id                                                             BigInt?
   member_id                                                                BigInt?
   transaction_id                                                           BigInt?
+  slip                                                                     String?                 @db.VarChar(100)
   core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember core_kwsmember?         @relation("core_auditmembertransactions_committed_idTocore_kwsmember", fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditmembertran_committed_id_ed29971c_fk_core_kwsm")
   core_kwsmember_core_auditmembertransactions_member_idTocore_kwsmember    core_kwsmember?         @relation("core_auditmembertransactions_member_idTocore_kwsmember", fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditmembertran_member_id_dc6f4923_fk_core_kwsm")
   core_membertransaction                                                   core_membertransaction? @relation(fields: [transaction_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditmembertran_transaction_id_65e59db6_fk_core_memb")
@@ -270,6 +263,9 @@ model core_auditsandouqchatransaction {
   collected_by_id                                                                BigInt?
   committed_id                                                                   BigInt?
   transaction_id                                                                 BigInt?
+  status                                                                         String                      @db.VarChar(10)
+  TID                                                                            String                      @db.VarChar(12)
+  slip                                                                           String?                     @db.VarChar(100)
   core_sandouqchaboxholder                                                       core_sandouqchaboxholder?   @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_box_id_59b86d39_fk_core_sand")
   core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember core_kwsmember?             @relation("core_auditsandouqchatransaction_collected_by_idTocore_kwsmember", fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_collected_by_id_05fb1dfc_fk_core_kwsm")
   core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember    core_kwsmember?             @relation("core_auditsandouqchatransaction_committed_idTocore_kwsmember", fields: [committed_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_auditsandouqcha_committed_id_72310e15_fk_core_kwsm")
@@ -436,6 +432,7 @@ model core_kwsmember {
   core_failedemail                                                                                core_failedemail[]
   core_informationupdate                                                                          core_informationupdate[]
   users_user                                                                                      users_user                        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_kwsmember_user_id_88bb0b4e_fk_users_user_id")
+  core_memberrenewal                                                                              core_memberrenewal[]
   core_membertransaction                                                                          core_membertransaction[]
   core_sandouqchaboxholder_core_sandouqchaboxholder_member_idTocore_kwsmember                     core_sandouqchaboxholder?         @relation("core_sandouqchaboxholder_member_idTocore_kwsmember")
   core_sandouqchaboxholder_core_sandouqchaboxholder_referred_by_idTocore_kwsmember                core_sandouqchaboxholder[]        @relation("core_sandouqchaboxholder_referred_by_idTocore_kwsmember")
@@ -469,6 +466,7 @@ model core_membertransaction {
   date                         DateTime                       @db.Date
   remarks                      String?
   member_id                    BigInt?
+  slip                         String?                        @db.VarChar(100)
   core_auditmembertransactions core_auditmembertransactions[]
   core_kwsmember               core_kwsmember?                @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_membertransacti_member_id_a9db06b1_fk_core_kwsm")
 
@@ -540,9 +538,9 @@ model core_sandouqchatransaction {
   coin_5                          Int
   box_id                          BigInt?
   collected_by_id                 BigInt?
-  status                          String                            @default("pending")
-  transaction_id                  String                            @default("0")
-  transaction_slip                String?
+  status                          String                            @db.VarChar(10)
+  TID                             String                            @db.VarChar(12)
+  slip                            String?                           @db.VarChar(100)
   core_auditsandouqchatransaction core_auditsandouqchatransaction[]
   core_sandouqchaboxholder        core_sandouqchaboxholder?         @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_box_id_75519a4e_fk_core_sand")
   core_kwsmember                  core_kwsmember?                   @relation(fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_collected_by_id_41f2b692_fk_core_kwsm")
@@ -737,13 +735,6 @@ model socialaccount_socialtoken {
   @@index([app_id], map: "socialaccount_socialtoken_app_id_636a42d7")
 }
 
-model users {
-  id       Int     @id @default(autoincrement())
-  name     String? @db.VarChar(100)
-  email    String? @unique @db.VarChar(100)
-  password String? @db.VarChar(100)
-}
-
 model users_user {
   id                          BigInt                        @id @default(autoincrement())
   password                    String                        @db.VarChar(128)
@@ -789,4 +780,18 @@ model users_user_user_permissions {
   @@unique([user_id, permission_id], map: "users_user_user_permissions_user_id_permission_id_43338c45_uniq")
   @@index([permission_id], map: "users_user_user_permissions_permission_id_0b93982e")
   @@index([user_id], map: "users_user_user_permissions_user_id_20aca447")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model core_memberrenewal {
+  id             BigInt          @id @default(autoincrement())
+  requested_date DateTime        @db.Timestamptz(6)
+  updated_date   DateTime        @db.Timestamptz(6)
+  processed      Boolean
+  data           Json
+  approved_by    String?         @db.VarChar(150)
+  member_id      BigInt?
+  core_kwsmember core_kwsmember? @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_memberrenewal_member_id_f10247f3_fk_core_kwsmember_user_id")
+
+  @@index([member_id], map: "core_memberrenewal_member_id_f10247f3")
 }
