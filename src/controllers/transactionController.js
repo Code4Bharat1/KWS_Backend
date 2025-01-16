@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-import { logTransactionActivity } from "../utils/logTransactionActivity.js";
 
 const formatDate = (date) => {
   if (!date) return "N/A";
