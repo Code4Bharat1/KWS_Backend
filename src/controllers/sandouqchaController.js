@@ -97,7 +97,7 @@ export const getBoxList = async (req, res) => {
 
 export const addBox = async (req, res) => {
   try {
-    const { boxFor, boxNumber, inUse, dateIssued, remarks, referredBy } = req.body;
+    const { boxFor, boxNumber, inUse, dateIssued, remarks, referredBy,committedId } = req.body;
 
     // Validate input
     if (!boxFor || !boxNumber || !inUse || !dateIssued) {
@@ -170,10 +170,30 @@ export const addBox = async (req, res) => {
         referred_by_id: referredById, // Add referred_by_id if provided
       },
     });
+    console.log(req.user_id);
+    
+    // Now, create a log entry for this action (Box Created)
+    const logData = {
+      action: "CREATED", // Action is 'CREATE' as we're adding a new box
+      committed_id: req.user_id, // The user who committed the change (should be fetched from local storage or passed in the request header)
+      created_at: new Date(), // Timestamp of the action
+      number: parseInt(boxNumber), // Store the same box number in the log
+      in_use: inUse === "Yes", // Store the same in_use value in the log
+      core_sandouqchaboxholder: { connect: { id: newBox.id } },
+      core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember: {
+        connect: { user_id: committedId }, // Link the committed user_id to the log
+      }, // Correctly link to the box using a relation
+    };
+
+    // Create a log entry in the audit table
+    const newLog = await prisma.core_auditsandouqchaboxholder.create({
+      data: logData,
+    });
 
     res.status(201).json({
       message: "Box added successfully.",
       box: newBox,
+      log: newLog, // Return the newly created log
     });
   } catch (error) {
     console.error("Error adding box:", error);
@@ -183,6 +203,113 @@ export const addBox = async (req, res) => {
   }
 };
 
+
+
+export const addBoxForNon =async(req,res)=> {
+  try {
+    const { boxFor, boxNumber, inUse, dateIssued, remarks, referredBy } = req.body;
+
+    // Validate input
+    if (!boxFor || !boxNumber || !inUse || !dateIssued) {
+      return res.status(400).json({
+        error: "Non-KWS ID, Box Number, In Use, and Date Issued are required fields.",
+      });
+    }
+
+    let nonKwsMemberId = null;
+
+    // Ensure the Non-KWS ID exists in the core_nonkwsmember schema
+    if (boxFor.startsWith("KWSKWN")) {
+      const nonKwsId = boxFor.replace(/^KWSKWN/, ""); // Remove the prefix
+      const parsedId = parseInt(nonKwsId, 10);
+
+      if (isNaN(parsedId)) {
+        return res.status(400).json({ error: "Invalid Non-KWS ID format." });
+      }
+
+      // Look up the non-KWS member in the database
+      const nonKwsMember = await prisma.core_nonkwsmember.findFirst({
+        where: { id: parsedId },
+        select: { id: true },
+      });
+
+      if (!nonKwsMember) {
+        return res.status(404).json({
+          error: "No Non-KWS member found with the provided KWSKWN ID.",
+        });
+      }
+
+      nonKwsMemberId = nonKwsMember.id; // Assign the Non-KWS member's ID
+    } else {
+      return res.status(400).json({
+        error: "Invalid Non-KWS ID format. It must start with 'KWSKWN'.",
+      });
+    }
+
+    // Validate and parse the date
+    const parseDate = (dateString) => {
+      const parsedDate = new Date(dateString);
+      if (isNaN(parsedDate)) {
+        return null; // Invalid date format
+      }
+      return parsedDate;
+    };
+
+    const validDateIssued = parseDate(dateIssued);
+
+    if (!validDateIssued) {
+      return res.status(400).json({ error: "Invalid Date Issued format." });
+    }
+
+    // Check if the box number already exists
+    const existingBox = await prisma.core_sandouqchaboxholder.findUnique({
+      where: { number: parseInt(boxNumber) },
+    });
+
+    if (existingBox) {
+      return res.status(400).json({ error: "A box with this number already exists." });
+    }
+
+    // Handle referred_by field if provided
+    let referredById = null;
+    if (referredBy) {
+      const referredMember = await prisma.core_kwsmember.findFirst({
+        where: { kwsid: referredBy },
+        select: { user_id: true },
+      });
+
+      if (!referredMember) {
+        return res.status(404).json({
+          error: "No member found with the provided referred_by KWS ID.",
+        });
+      }
+
+      referredById = referredMember.user_id;
+    }
+
+    // Create a new box entry
+    const newBox = await prisma.core_sandouqchaboxholder.create({
+      data: {
+        number: parseInt(boxNumber),
+        in_use: inUse === "Yes", // Convert to boolean
+        date_issued: validDateIssued,
+        remarks: remarks || null,
+        non_member_id: nonKwsMemberId, // Link the box to the non-KWS member ID
+        referred_by_id: referredById, // Add referred_by_id if provided
+      },
+    });
+
+    res.status(201).json({
+      message: "Box added successfully.",
+      box: newBox,
+    });
+  } catch (error) {
+    console.error("Error adding box for Non-KWS ID:", error);
+    res.status(500).json({
+      error: "An error occurred while adding the box for Non-KWS ID.",
+    });
+  }
+};
 
 
 
@@ -196,27 +323,38 @@ export const getBox = async (req, res) => {
 
     const parsedNumber = parseInt(number, 10);
     if (isNaN(parsedNumber) || parsedNumber <= 0) {
-      return res.status(400).json({ error: "Box Number must be a positive integer." });
+      return res
+        .status(400)
+        .json({ error: "Box Number must be a positive integer." });
     }
 
-    // Fetch the box details including member and referredBy relationships
+    // Fetch the box details including related member, non-member and referredBy relationships.
     const sandouqcha = await prisma.core_sandouqchaboxholder.findUnique({
-      where: {
-        number: parsedNumber,
-      },
+      where: { number: parsedNumber },
       include: {
-        core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember: { // Member relationship
+        // For KWS member relationship
+        core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember: {
           select: {
             kwsid: true,
             first_name: true,
             last_name: true,
           },
         },
-        core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember: { // ReferredBy relationship
+        // For referredBy relationship (always a KWS member)
+        core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember: {
           select: {
             kwsid: true,
             first_name: true,
             last_name: true,
+          },
+        },
+        // For non-KWS member relationship (if box was added for a non-KWS member)
+        core_nonkwsmember: {
+          select: {
+            id: true,
+            first_name: true,
+            last_name: true,
+            // add additional fields if needed
           },
         },
       },
@@ -233,23 +371,35 @@ export const getBox = async (req, res) => {
       if (isNaN(parsedDate.getTime())) {
         return "Invalid Date";
       }
-      return parsedDate.toISOString().split('T')[0];
+      return parsedDate.toISOString().split("T")[0];
     };
 
-    // Format the response
+    // Determine if the box was issued to a KWS member or to a Non-KWS member.
+    let memberDetails = "None";
+    if (sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember) {
+      memberDetails = {
+        kwsid:
+          sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.kwsid,
+        name: `${sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.first_name} ${sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.last_name}`,
+      };
+    } else if (sandouqcha.core_nonkwsmember) {
+      // For non-KWS members, you might display the member's id and/or full name.
+      memberDetails = {
+        nonKwsMemberId: sandouqcha.core_nonkwsmember.id,
+        name: `${sandouqcha.core_nonkwsmember.first_name} ${sandouqcha.core_nonkwsmember.last_name}`,
+      };
+    }
+
+    // Prepare the final details
     const sandouqchaDetails = {
       number: sandouqcha.number.toString().padStart(8, "0"),
       inUse: sandouqcha.in_use ? "True" : "False",
       dateIssued: formatDate(sandouqcha.date_issued),
-      member: sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember
-        ? {
-            kwsid: sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.kwsid,
-            name: `${sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.first_name} ${sandouqcha.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.last_name}`,
-          }
-        : "None",
+      member: memberDetails,
       referredBy: sandouqcha.core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember
         ? {
-            kwsid: sandouqcha.core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember.kwsid,
+            kwsid:
+              sandouqcha.core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember.kwsid,
             name: `${sandouqcha.core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember.first_name} ${sandouqcha.core_kwsmember_core_sandouqchaboxholder_referred_by_idTocore_kwsmember.last_name}`,
           }
         : "None",
@@ -259,16 +409,17 @@ export const getBox = async (req, res) => {
     res.status(200).json(sandouqchaDetails);
   } catch (error) {
     console.error("Error fetching box details:", error);
-    res.status(500).json({ error: "An error occurred while fetching box details." });
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching box details." });
   }
 };
-
 
 
 export const editBox = async (req, res) => {
   try {
     const { number } = req.params;
-    const { inUse, dateIssued, remarks, referredBy } = req.body;
+    const { inUse, dateIssued, remarks, referredBy,committedId } = req.body;
 
     // Validate `number`
     if (!number) {
@@ -324,6 +475,30 @@ export const editBox = async (req, res) => {
         referred_by_id: referredById || box.referred_by_id, // Keep existing referred_by_id if not updated
       },
     });
+    // committedId
+    const logData = {
+      action: "MODIFIED", // Action is 'CREATE' as we're adding a new box
+      committed_id: req.user_id, // The user who committed the change (should be fetched from local storage or passed in the request header)
+      created_at: new Date(), // Timestamp of the action
+      number: parseInt(parsedNumber), // Store the same box number in the log
+      in_use: inUse === "Yes", // Store the same in_use value in the log
+      core_sandouqchaboxholder: { connect: { id: updatedBox.id } },
+      core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember: {
+        connect: { user_id: committedId }, // Link the committed user_id to the log
+      }, // Correctly link to the box using a relation
+    };
+
+    // Create a log entry in the audit table
+    const newLog = await prisma.core_auditsandouqchaboxholder.create({
+      data: logData,
+    });
+    console.log(
+      "yhis is new logs",newLog
+    );
+    
+
+
+
 
     res.status(200).json({
       message: "Box updated successfully.",
@@ -334,6 +509,7 @@ export const editBox = async (req, res) => {
         remarks: updatedBox.remarks || "No Remarks",
         referredBy: referredBy || "None",
       },
+      newLog,
     });
   } catch (error) {
     console.error("Error editing box:", error);
@@ -365,7 +541,12 @@ export const deleteBox = async (req, res) => {
       return res.status(404).json({ error: "Box not found." });
     }
 
-    // Delete the box
+    // Delete the related audit records first
+    await prisma.core_auditsandouqchaboxholder.deleteMany({
+      where: { box_id: existingBox.id },
+    });
+
+    // Now, delete the box
     await prisma.core_sandouqchaboxholder.delete({
       where: { number: parsedNumber },
     });
@@ -377,3 +558,71 @@ export const deleteBox = async (req, res) => {
   }
 };
 
+
+
+export const getBoxLogs = async (req, res) => {
+  const { number } = req.params; // Retrieve box number from URL parameters
+
+  if (!number) {
+    return res.status(400).json({ error: "Box number is required." });
+  }
+
+  try {
+    // Fetch the box ID and 'in_use' status from the core_sandouqchaboxholder table using the box number
+    const box = await prisma.core_sandouqchaboxholder.findUnique({
+      where: { number: parseInt(number, 10) },
+      select: { id: true, in_use: true }, // Retrieve box ID and in_use field
+    });
+
+    if (!box) {
+      return res.status(404).json({ error: "Box not found." });
+    }
+
+    // Fetch logs associated with the box ID from the core_auditsandouqchaboxholder table
+    const logs = await prisma.core_auditsandouqchaboxholder.findMany({
+      where: {
+        box_id: box.id, // Use the box's ID to filter logs
+      },
+      include: {
+        core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember: {
+          select: {
+            user_id: true, // Get the user_id (committed_by field)
+            first_name: true,
+            last_name: true,
+            kwsid: true,
+          },
+        },
+        core_sandouqchaboxholder: {
+          select: {
+            number: true, // Get the box number
+            in_use: true, // Get the in_use status of the box
+          },
+        },
+      },
+      orderBy: {
+        created_at: "desc", // Order logs by timestamp (most recent first)
+      },
+    });
+
+    if (logs.length === 0) {
+      return res.status(404).json({ error: "No logs found for this box." });
+    }
+
+    // Format the logs to include committed_by (fetch user details using user_id)
+    const formattedLogs = logs.map((log) => ({
+      ...log,
+      in_use: box.in_use, // Attach the in_use status from the box to each log
+      committed_by: {
+        user_id: log.core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember.user_id,
+        kwsid: log.core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember.kwsid,
+        name: ` ${log.core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember.kwsid} -${log.core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember.first_name} ${log.core_kwsmember_core_auditsandouqchaboxholder_committed_idTocore_kwsmember.last_name}`,
+      },
+    }));
+
+    // Return the formatted logs in the response
+    return res.status(200).json(formattedLogs);
+  } catch (error) {
+    console.error("Error fetching box logs:", error);
+    return res.status(500).json({ error: "An error occurred while fetching the box logs." });
+  }
+};

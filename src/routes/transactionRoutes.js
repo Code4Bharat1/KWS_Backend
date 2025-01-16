@@ -20,4 +20,6 @@ router.delete('/delete/:id',deleteTransactionofIndividual);
 router.get('/getlogs/:id',getTransactionslogs);
 
 
+
+
 export default router;

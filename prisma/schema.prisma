@@ -540,6 +540,9 @@ model core_sandouqchatransaction {
   coin_5                          Int
   box_id                          BigInt?
   collected_by_id                 BigInt?
+  status                          String                            @default("pending")
+  transaction_id                  String                            @default("0")
+  transaction_slip                String?
   core_auditsandouqchatransaction core_auditsandouqchatransaction[]
   core_sandouqchaboxholder        core_sandouqchaboxholder?         @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_box_id_75519a4e_fk_core_sand")
   core_kwsmember                  core_kwsmember?                   @relation(fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_collected_by_id_41f2b692_fk_core_kwsm")

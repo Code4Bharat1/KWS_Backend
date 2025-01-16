@@ -41,6 +41,7 @@ setupEventListeners(process);
 // This makes files in the "uploads" directory accessible at /uploads/{filename}
 app.use('/uploads/profile-pictures', express.static(path.join(__dirname, '../uploads/profile-pictures')));
 app.use('/uploads/form-scanned', express.static(path.join(__dirname, '../uploads/form-scanned')));
+app.use('/uploads/transaction-slips', express.static(path.join(__dirname, '../uploads/transaction-slips')));
 
 
 // Debug middleware to inspect requests
