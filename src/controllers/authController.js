@@ -1,11 +1,9 @@
 import argon2 from "argon2";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
-import prisma from '../prismaClient.js';
-import path from 'path';
-import fs from 'fs';
-
-
+import prisma from "../prismaClient.js";
+import path from "path";
+import fs from "fs";
 
 // register user (add)
 BigInt.prototype.toJSON = function () {
@@ -51,45 +49,37 @@ export const registerUser = async (req, res) => {
       father_name,
       mother_name,
       spouse_name,
+      child_name_1,
+      child_name_2,
+      child_name_3,
+      child_name_4,
+      child_name_5,
       child_names = [],
       additional_information,
       nominations = [],
     } = req.body;
-
-    // Validate required fields
+    // console.log("All i am geting",req.body);
+    
+    // Basic validation for required fields...
     if (!email || !password || !civil_id || !first_name || !gender) {
       return res.status(400).json({ message: "Missing required fields." });
     }
-
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return res.status(400).json({ message: "Invalid email format." });
     }
-
     if (password.length < 8) {
-      return res.status(400).json({ message: "Password must be at least 8 characters long." });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters long." });
     }
-
     if (!["Male", "Female"].includes(gender)) {
-      return res.status(400).json({ message: "Invalid gender value. Must be 'Male' or 'Female'." });
+      return res
+        .status(400)
+        .json({ message: "Invalid gender value. Must be 'Male' or 'Female'." });
     }
 
-    // Check if the email is already registered
-    const existingUser = await prisma.users_user.findFirst({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered." });
-    }
-
-    // Check if civil_id is unique
-    const existingMember = await prisma.core_kwsmember.findFirst({
-      where: { civil_id },
-    });
-
-    if (existingMember) {
-      return res.status(400).json({ message: "Civil ID already registered." });
-    }
+    // Check if the email or civil_id is already registered
+    // ... (your existing code for checking existing records)
 
     // Hash the password and add a prefix
     const hashedPassword = await argon2.hash(password);
@@ -110,45 +100,70 @@ export const registerUser = async (req, res) => {
     });
 
     // Parse child names (up to 5)
-    const [child_name_1, child_name_2, child_name_3, child_name_4, child_name_5] = child_names;
+    // const [
+    //   child_name_1,
+    //   child_name_2,
+    //   child_name_3,
+    //   child_name_4,
+    //   child_name_5,
+    // ] = child_names;
+    // console.log("juend here ",child_names);
 
-    // Parse nominations
-    const nominationsData = nominations.map((nomination, index) => ({
+    // --- Begin: Parse `nominations` properly ---
+    let parsedNominations = [];
+    if (typeof nominations === "string") {
+      try {
+        parsedNominations = JSON.parse(nominations);
+        if (!Array.isArray(parsedNominations)) {
+          throw new Error("Parsed nominations is not an array.");
+        }
+      } catch (e) {
+        console.error("Error parsing nominations:", e);
+        return res.status(400).json({ message: "Invalid nominations format." });
+      }
+    } else if (Array.isArray(nominations)) {
+      parsedNominations = nominations;
+    } else {
+      return res.status(400).json({ message: "Invalid nominations format." });
+    }
+    // --- End: Parse `nominations` ---
+
+    // Process nominations data with percentage conversion.
+    const nominationsData = parsedNominations.map((nomination, index) => ({
       [`full_name_${index + 1}`]: nomination?.name || null,
       [`relation_${index + 1}`]: nomination?.relation || null,
-      [`percentage_${index + 1}`]: nomination?.percentage || null,
+      // Convert percentage to a number.
+      [`percentage_${index + 1}`]: nomination?.percentage
+        ? Number(nomination.percentage)
+        : null,
       [`mobile_${index + 1}`]: nomination?.contact || null,
     }));
 
-    // Flatten nomination data into a single object
+    // Flatten the nominations data into a single object.
     const flattenedNominations = nominationsData.reduce((acc, curr) => {
       return { ...acc, ...curr };
     }, {});
-    console.log(req.files.profile_picture);
-    
-    // Extract the profile picture file path if uploaded
+    // --- End nominations processing ---
+
+    // Handle profile picture upload if available.
     let profile_picture = null;
-    if (req.files && req.files.profile_picture && req.files.profile_picture.length > 0) {
+    if (
+      req.files &&
+      req.files.profile_picture &&
+      req.files.profile_picture.length > 0
+    ) {
       const profilePic = req.files.profile_picture[0];
       const uploadDir = path.resolve("uploads/profile-pictures");
-    
-      // Check if the upload directory exists, if not create it
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
-    
-      // Define the path where the file should be saved
       const uploadPath = path.join(uploadDir, profilePic.filename);
-    
-      // Rename the file and move it to the upload directory
       fs.renameSync(profilePic.path, uploadPath);
-    
-      // Set the profile picture path to the relative file path
       profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
-    console.log("juned",profile_picture);
-    
-    // Create the member record
+console.log("again last try khudse",child_name_1,child_name_2,  child_name_3,  child_name_4,  child_name_5);
+
+    // Create the member record.
     const newMember = await prisma.core_kwsmember.create({
       data: {
         user_id: newUser.id,
@@ -193,36 +208,36 @@ export const registerUser = async (req, res) => {
         child_name_4,
         child_name_5,
         additional_information,
-        profile_picture, // Save the profile picture path
+        profile_picture, // Save the profile picture path.
         ...flattenedNominations,
         application_date: new Date(),
         updated_date: new Date(),
         membership_status: "pending",
       },
       include: {
-        users_user: true, // Fetch the linked user if needed
+        users_user: true, // Fetch the linked user if needed.
       },
     });
 
-    // Send success response
     return res.status(201).json({
       message: "Registration successful",
       member: newMember,
     });
   } catch (error) {
     console.error("Error during registration:", error.message);
-    return res.status(500).json({ message: "Server error during registration." });
+    return res
+      .status(500)
+      .json({ message: "Server error during registration." });
   }
 };
 
-
 // get a user (find)
- export const getUser = async (req, res) => {
-  const { user_id } = req.params;  // Extract user_id from URL parameter
+export const getUser = async (req, res) => {
+  const { user_id } = req.params; // Extract user_id from URL parameter
   try {
     const user = await prisma.core_kwsmember.findUnique({
       where: {
-        user_id: BigInt(user_id),  // Querying by user_id, assuming it's a BigInt
+        user_id: BigInt(user_id), // Querying by user_id, assuming it's a BigInt
       },
     });
 
@@ -234,7 +249,9 @@ export const registerUser = async (req, res) => {
     return res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching user:", error.message);
-    return res.status(500).json({ message: "Server error during fetching user." });
+    return res
+      .status(500)
+      .json({ message: "Server error during fetching user." });
   }
 };
 
@@ -249,7 +266,7 @@ export const allUsers = async (req, res) => {
       skip: parseInt(offset),
       take: parseInt(limit),
       orderBy: {
-        updated_date: 'desc', // Sort by the updated date in descending order
+        updated_date: "desc", // Sort by the updated date in descending order
       },
       include: {
         users_user: true, // Include linked user details
@@ -274,7 +291,6 @@ export const allUsers = async (req, res) => {
     return res.status(500).json({ message: "Server error fetching users." });
   }
 };
-
 
 // edit user (put)
 export const editUser = async (req, res) => {
@@ -331,14 +347,19 @@ export const editUser = async (req, res) => {
     }
 
     // Update child names and nominations if provided
-    const [child_name_1, child_name_2, child_name_3, child_name_4, child_name_5] = child_names;
+    const [
+      child_name_1,
+      child_name_2,
+      child_name_3,
+      child_name_4,
+      child_name_5,
+    ] = child_names;
     const nominationsData = nominations.map((nomination, index) => ({
       [`full_name_${index + 1}`]: nomination?.name || null,
       [`relation_${index + 1}`]: nomination?.relation || null,
       [`percentage_${index + 1}`]: nomination?.percentage || null,
       [`mobile_${index + 1}`]: nomination?.contact || null,
     }));
-
 
     const flattenedNominations = nominationsData.reduce((acc, curr) => {
       return { ...acc, ...curr };
@@ -400,11 +421,11 @@ export const editUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating user:", error.message);
-    return res.status(500).json({ message: "Server error during user update." });
+    return res
+      .status(500)
+      .json({ message: "Server error during user update." });
   }
 };
-
-
 
 // login ka hai
 export const loginUser = async (req, res) => {
@@ -413,7 +434,9 @@ export const loginUser = async (req, res) => {
   // console.log("Login request received:", { username, password });
 
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
   }
 
   try {
@@ -430,8 +453,8 @@ export const loginUser = async (req, res) => {
     // console.log("Retrieved hash from DB (before cleanup):", hashedPassword);
 
     // Remove the `argon2` prefix if present
-    if (hashedPassword.startsWith('argon2$')) {
-      hashedPassword = hashedPassword.replace(/^argon2/, ''); // Remove the `argon2` prefix
+    if (hashedPassword.startsWith("argon2$")) {
+      hashedPassword = hashedPassword.replace(/^argon2/, ""); // Remove the `argon2` prefix
     }
 
     // console.log("Cleaned hash for verification:", hashedPassword);
@@ -456,24 +479,31 @@ export const loginUser = async (req, res) => {
       {
         userId: user.id,
         username: user.username,
-        staffRoles: staffRoles,  // Include the roles in the JWT payload
+        staffRoles: staffRoles, // Include the roles in the JWT payload
       },
       process.env.JWT_SECRET, // Use the secret key from environment variables
       { expiresIn: "1h" } // Set token expiry time (e.g., 1 hour)
     );
 
     // Set JWT token as HTTP-only cookie
-    res.setHeader("Set-Cookie", cookie.serialize("token", token, {
-      httpOnly: true, // Ensures the cookie can't be accessed by JavaScript
-      secure: process.env.NODE_ENV === "production", // Set to true in production for HTTPS
-      maxAge: 60 * 60, // 1 hour
-      path: "/",
-    }));
+    res.setHeader(
+      "Set-Cookie",
+      cookie.serialize("token", token, {
+        httpOnly: true, // Ensures the cookie can't be accessed by JavaScript
+        secure: process.env.NODE_ENV === "production", // Set to true in production for HTTPS
+        maxAge: 60 * 60, // 1 hour
+        path: "/",
+      })
+    );
 
     // Send the successful login response
     return res.status(200).json({
       message: "Login successful",
-      user: { id: userId, username: user.username, staffRoles: user.staff_roles },
+      user: {
+        id: userId,
+        username: user.username,
+        staffRoles: user.staff_roles,
+      },
     });
   } catch (error) {
     console.error("Error during login:", error.message);
