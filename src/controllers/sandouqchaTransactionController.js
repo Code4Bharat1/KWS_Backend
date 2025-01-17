@@ -643,3 +643,10 @@ export const bulkTransaction = async (req, res) => {
     }
   });
 };
+
+
+
+
+export const Logs = async (req,res)=> {
+
+};
