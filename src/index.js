@@ -26,10 +26,10 @@ const __dirname = path.dirname(__filename);  // This will give you the current d
 
 // Enable CORS for frontend connection
 app.use(cors({
-    origin: 'http://localhost:3000',
-    methods: ['GET', 'POST', 'PUT','DELETE' ,'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    origin: true, // Allow all origins
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow these HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allow these headers
+    credentials: true, // Allow credentials (e.g., cookies)
 }));
 
 // Parse JSON payloads
