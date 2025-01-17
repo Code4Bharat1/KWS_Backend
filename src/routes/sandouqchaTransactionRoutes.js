@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import {getTransactionList,addTransaction,viewTransaction,editTransaction,deleteTransaction,bulkTransaction,Logs} from '../controllers/sandouqchaTransactionController.js';
+import {getTransactionList,addTransaction,viewTransaction,editTransaction,deleteTransaction,bulkTransaction,logs} from '../controllers/sandouqchaTransactionController.js';
 
 const router = Router();
 
@@ -18,7 +18,7 @@ router.delete('/delete/:id',deleteTransaction);
 router.post('/bulk',bulkTransaction);
 
 
-router.get('/log/:id',Logs);
+router.get('/log/:id',logs);
 
 
 

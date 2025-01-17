@@ -150,7 +150,7 @@ export const addTransaction = async (req, res) => {
         coin_20,
         coin_10,
         coin_5,
-        // Do not use status from req.body as it is being overwritten with "Pending"
+        committedId // Get the logged-in user's ID from the request body or headers
       } = req.body;
 
       // Handle the transaction slip file URL
@@ -159,8 +159,14 @@ export const addTransaction = async (req, res) => {
         : null;
 
       // Validate required fields
-      if (!transactionId || !date || !boxId || !collectedByKwsid) {
-        return res.status(400).json({ error: "Transaction ID, Date, boxId, and collectedByKwsid are required." });
+      if (!transactionId || !date || !boxId || !collectedByKwsid || !committedId) {
+        return res.status(400).json({ error: "Transaction ID, Date, boxId, collectedByKwsid, and committedId are required." });
+      }
+
+      // Convert date to a Date object and validate
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({ error: "Invalid date format. Expected ISO-8601 DateTime." });
       }
 
       // Convert boxId to a number
@@ -188,13 +194,13 @@ export const addTransaction = async (req, res) => {
         return res.status(400).json({ error: "Invalid collectedByKwsid." });
       }
 
-      // Create a new transaction entry with proper type conversion for numeric fields
+      // Create a new transaction entry
       const newTransaction = await prisma.core_sandouqchatransaction.create({
         data: {
           TID: transactionId,
-          date: new Date(date),
-          box_id: boxHolder.id, // Using the resolved box holder ID
-          collected_by_id: member.user_id, // Using the resolved member user ID
+          date: parsedDate, // Pass the validated date
+          box_id: boxHolder.id,
+          collected_by_id: member.user_id,
           note_20: parseInt(note_20, 10) || 0,
           note_10: parseInt(note_10, 10) || 0,
           note_5: parseInt(note_5, 10) || 0,
@@ -206,8 +212,32 @@ export const addTransaction = async (req, res) => {
           coin_20: parseInt(coin_20, 10) || 0,
           coin_10: parseInt(coin_10, 10) || 0,
           coin_5: parseInt(coin_5, 10) || 0,
-          slip: transactionSlipUrl, // Store the file URL here
+          slip: transactionSlipUrl,
           status: "Pending",  // Set status as "Pending"
+        },
+      });
+
+      // Create a log for this transaction
+      await prisma.core_auditsandouqchatransaction.create({
+        data: {
+          action: "CREATED",
+          transaction_id: newTransaction.id,
+          committed_id: committedId,
+          date: new Date(date), // Ensure date is a valid Date object
+          note_20: parseInt(note_20, 10) || 0, // Convert note_20 to an integer
+          note_10: parseInt(note_10, 10) || 0, // Convert note_10 to an integer
+          note_5: parseInt(note_5, 10) || 0, // Convert note_5 to an integer
+          note_1: parseInt(note_1, 10) || 0, // Convert note_1 to an integer
+          note_0_5: parseFloat(note_0_5) || 0, // Convert note_0_5 to a float
+          note_0_25: parseFloat(note_0_25) || 0, // Convert note_0_25 to a float
+          coin_100: parseInt(coin_100, 10) || 0, // Convert coin_100 to an integer
+          coin_50: parseInt(coin_50, 10) || 0, // Convert coin_50 to an integer
+          coin_20: parseInt(coin_20, 10) || 0, // Convert coin_20 to an integer
+          coin_10: parseInt(coin_10, 10) || 0, // Convert coin_10 to an integer
+          coin_5: parseInt(coin_5, 10) || 0, // Convert coin_5 to an integer
+          created_at: new Date(), // Set the created_at field to the current date and time
+          status: "Pending", // Set the status as Pending
+          TID: newTransaction.TID || transactionId, // Use transactionId as fallback for TID
         },
       });
 
@@ -222,6 +252,8 @@ export const addTransaction = async (req, res) => {
     res.status(500).json({ error: "An error occurred while adding the transaction." });
   }
 };
+
+
 
 
 
@@ -448,6 +480,31 @@ export const editTransaction = async (req, res) => {
         data: updateData,
       });
 
+      // Create a log for this modification with action "MODIFIED"
+      await prisma.core_auditsandouqchatransaction.create({
+        data: {
+          action: "MODIFIED",  // Action type for the log
+          transaction_id: updatedTransaction.id,
+          committed_id: req.body.committedId,
+          date: new Date(date), // Ensure date is a valid Date object
+          note_20: parseInt(note_20, 10) || 0,
+          note_10: parseInt(note_10, 10) || 0,
+          note_5: parseInt(note_5, 10) || 0,
+          note_1: parseInt(note_1, 10) || 0,
+          note_0_5: parseFloat(note_0_5) || 0,
+          note_0_25: parseFloat(note_0_25) || 0,
+          coin_100: parseInt(coin_100, 10) || 0,
+          coin_50: parseInt(coin_50, 10) || 0,
+          coin_20: parseInt(coin_20, 10) || 0,
+          coin_10: parseInt(coin_10, 10) || 0,
+          coin_5: parseInt(coin_5, 10) || 0,
+          created_at: new Date(), // Set the created_at field to the current date and time
+          status: status || "pending", // Set the status as Pending
+          TID: updatedTransaction.TID || req.body.transactionId, // Use transactionId as fallback for TID
+        },
+      });
+
+      // Respond with the updated transaction
       res.status(200).json({
         message: "Transaction updated successfully.",
         transaction: updatedTransaction,
@@ -463,17 +520,24 @@ export const editTransaction = async (req, res) => {
 
 
 export const deleteTransaction = async (req, res) => {
-  const { id } = req.params; 
+  const { id } = req.params;
 
   if (!id) {
     return res.status(400).json({ error: "Transaction ID is required." });
   }
 
   try {
-  
+    // First, delete the dependent records in the related table (e.g., core_auditsandouqcha)
+    await prisma.core_auditsandouqchatransaction.deleteMany({
+      where: {
+        transaction_id: BigInt(id), // Ensure the ID is treated as BigInt
+      },
+    });
+
+    // Now, delete the transaction itself
     const deletedTransaction = await prisma.core_sandouqchatransaction.delete({
       where: {
-        id: BigInt(id), // Ensure the ID is treated as a BigInt for Prisma
+        id: BigInt(id), // Ensure the ID is treated as BigInt
       },
     });
 
@@ -647,6 +711,92 @@ export const bulkTransaction = async (req, res) => {
 
 
 
-export const Logs = async (req,res)=> {
+export const logs = async (req, res) => {
+  const { id } = req.params; // Retrieve 'transaction_id' from the request params
 
+  if (!id) {
+    return res.status(400).json({ error: "Transaction ID is required." });
+  }
+
+  try {
+    // Fetch logs based on the transaction_id
+    const logs = await prisma.core_auditsandouqchatransaction.findMany({
+      where: {
+        transaction_id: id, // Use 'transaction_id' to filter logs
+      },
+      include: {
+        core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember: {
+          select: {
+            user_id: true,
+            first_name: true,
+            last_name: true,
+            kwsid: true,
+          },
+        },
+        core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember: {
+          select: {
+            user_id: true,
+            first_name: true,
+            last_name: true,
+            kwsid: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: "desc", // Order logs by timestamp (most recent first)
+      },
+    });
+
+    if (logs.length === 0) {
+      return res.status(404).json({ error: "No logs found for this transaction ID." });
+    }
+
+    // Format the logs to include required fields and user details
+    const formattedLogs = logs.map((log) => {
+      // Calculate the total value from coins and notes
+      const total =
+        log.note_20 * 20 +
+        log.note_10 * 10 +
+        log.note_5 * 5 +
+        log.note_1 * 1 +
+        log.note_0_5 * 0.5 +
+        log.note_0_25 * 0.25 +
+        log.coin_100 * 100 +
+        log.coin_50 * 50 +
+        log.coin_20 * 20 +
+        log.coin_10 * 10 +
+        log.coin_5 * 5;
+
+      return {
+        id: log.id,
+        action: log.action || "N/A",
+        transaction_id: log.transaction_id || "N/A",
+        date: log.date ? new Date(log.date).toLocaleDateString() : "N/A", // Format the date
+        note_20: log.note_20 || 0,
+        note_10: log.note_10 || 0,
+        note_5: log.note_5 || 0,
+        note_1: log.note_1 || 0,
+        note_0_5: log.note_0_5 || 0,
+        note_0_25: log.note_0_25 || 0,
+        coin_100: log.coin_100 || 0,
+        coin_50: log.coin_50 || 0,
+        coin_20: log.coin_20 || 0,
+        coin_10: log.coin_10 || 0,
+        coin_5: log.coin_5 || 0,
+        total: total, // Add the calculated total here
+        collected_by: log.core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember
+          ? `${log.core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember.kwsid} - ${log.core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember.first_name} ${log.core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember.last_name}`
+          : "Unknown",
+        committed_by: log.core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember
+          ? `${log.core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember.kwsid} - ${log.core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember.first_name} ${log.core_kwsmember_core_auditsandouqchatransaction_committed_idTocore_kwsmember.last_name}`
+          : "Unknown",
+      };
+    });
+
+    // Return the formatted logs in the response
+    return res.status(200).json(formattedLogs);
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+    return res.status(500).json({ error: "An error occurred while fetching the logs." });
+  }
 };
