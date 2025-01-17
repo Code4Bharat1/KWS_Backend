@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import fs from 'fs';
 import path from "path";
 import { generateNextKwsId } from "../utils/kwsIdGenerator.js";
 import { sendApprovalEmail } from "../utils/mail.js";
@@ -41,7 +42,15 @@ BigInt.prototype.toJSON = function () {
 export const updateApprovalStatus = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const { membership_status, dob, user_id: _ignoreUserId, ...updatedFields } = req.body;
+    const {
+      membership_status,
+      dob,
+      percentage_1,
+      percentage_2,
+      percentage_3,
+      percentage_4,
+      ...updatedFields
+    } = req.body;
 
     let userId;
     try {
@@ -50,8 +59,20 @@ export const updateApprovalStatus = async (req, res) => {
       return res.status(400).json({ message: "Invalid user_id format." });
     }
 
-    if (typeof membership_status !== "string") {
-      return res.status(400).json({ message: "Invalid membership_status value. Expected a string." });
+    // Validate and convert `percentage_*` fields to integers
+    const parsedPercentages = {
+      percentage_1: percentage_1 ? parseInt(percentage_1, 10) : null,
+      percentage_2: percentage_2 ? parseInt(percentage_2, 10) : null,
+      percentage_3: percentage_3 ? parseInt(percentage_3, 10) : null,
+      percentage_4: percentage_4 ? parseInt(percentage_4, 10) : null,
+    };
+
+    if (
+      Object.values(parsedPercentages).some(
+        (value) => value !== null && isNaN(value)
+      )
+    ) {
+      return res.status(400).json({ message: "Invalid percentage values provided." });
     }
 
     let dobAsDate = null;
@@ -70,13 +91,28 @@ export const updateApprovalStatus = async (req, res) => {
       return res.status(404).json({ message: "Member not found." });
     }
 
-    let newKwsId = existingMember.kwsid;
-    let memberUpdateData = {
+    const memberUpdateData = {
       ...updatedFields,
+      ...parsedPercentages, // Include parsed percentages
       membership_status,
       dob: dobAsDate,
       updated_date: new Date(),
     };
+    
+    let newKwsId = existingMember.kwsid;
+    // Handle files from req.files
+    const uploadedFiles = req.files;
+    if (uploadedFiles) {
+      if (uploadedFiles.profile_picture) {
+        memberUpdateData.profile_picture = uploadedFiles.profile_picture[0].path; // Save file path
+      }
+      if (uploadedFiles.form_scanned) {
+        memberUpdateData.form_scanned = uploadedFiles.form_scanned[0].path; // Save file path
+      }
+      if (uploadedFiles.transactionSlip) {
+        memberUpdateData.transactionSlip = uploadedFiles.transactionSlip[0].path; // Save file path
+      }
+    }
 
     if (
       membership_status.toLowerCase() === "approved" &&
@@ -106,7 +142,6 @@ export const updateApprovalStatus = async (req, res) => {
       const results = await prisma.$transaction(transaction);
       updatedMember = results[0];
       updatedUser = results[1];
-      // console.log(`Successfully updated username for user ID ${userId} to ${updatedUser.username}`);
     } catch (transactionError) {
       console.error("Transaction failed:", transactionError.message);
       return res.status(500).json({ message: "Failed to update user information." });
@@ -115,14 +150,13 @@ export const updateApprovalStatus = async (req, res) => {
     if (membership_status.toLowerCase() === "approved") {
       try {
         await sendApprovalEmail(updatedUser.email, newKwsId);
-        // console.log("Approval email sent successfully.");
       } catch (emailError) {
         console.error("Error sending approval email:", emailError.message);
       }
     }
 
     res.status(200).json({
-      message: "Membership status and user data updated successfully.",
+      message: "Membership status, user data, and files updated successfully.",
       updatedMember,
       updatedUser,
     });
@@ -134,7 +168,6 @@ export const updateApprovalStatus = async (req, res) => {
     });
   }
 };
-
 
 
 
