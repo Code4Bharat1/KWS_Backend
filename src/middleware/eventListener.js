@@ -17,7 +17,7 @@ export const setupEventListeners = (emitter) => {
             console.error('Unhandled Rejection:', reason);
         });
 
-        console.log('Listeners added successfully.');
+        // console.log('Listeners added successfully.');
     }
 };
 

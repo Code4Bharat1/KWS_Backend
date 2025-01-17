@@ -170,7 +170,7 @@ export const addBox = async (req, res) => {
         referred_by_id: referredById, // Add referred_by_id if provided
       },
     });
-    console.log(req.user_id);
+    // console.log(req.user_id);
     
     // Now, create a log entry for this action (Box Created)
     const logData = {
@@ -492,9 +492,9 @@ export const editBox = async (req, res) => {
     const newLog = await prisma.core_auditsandouqchaboxholder.create({
       data: logData,
     });
-    console.log(
-      "yhis is new logs",newLog
-    );
+    // console.log(
+    //   "yhis is new logs",newLog
+    // );
     
 
 

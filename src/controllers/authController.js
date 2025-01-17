@@ -2,6 +2,8 @@ import argon2 from "argon2";
 import cookie from "cookie";
 import jwt from "jsonwebtoken";
 import prisma from '../prismaClient.js';
+import path from 'path';
+import fs from 'fs';
 
 
 
@@ -122,14 +124,30 @@ export const registerUser = async (req, res) => {
     const flattenedNominations = nominationsData.reduce((acc, curr) => {
       return { ...acc, ...curr };
     }, {});
-
+    console.log(req.files.profile_picture);
+    
     // Extract the profile picture file path if uploaded
     let profile_picture = null;
     if (req.files && req.files.profile_picture && req.files.profile_picture.length > 0) {
-      // Save the relative path or URL as needed
-      profile_picture = req.files.profile_picture[0].path;
+      const profilePic = req.files.profile_picture[0];
+      const uploadDir = path.resolve("uploads/profile-pictures");
+    
+      // Check if the upload directory exists, if not create it
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+    
+      // Define the path where the file should be saved
+      const uploadPath = path.join(uploadDir, profilePic.filename);
+    
+      // Rename the file and move it to the upload directory
+      fs.renameSync(profilePic.path, uploadPath);
+    
+      // Set the profile picture path to the relative file path
+      profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
-
+    console.log("juned",profile_picture);
+    
     // Create the member record
     const newMember = await prisma.core_kwsmember.create({
       data: {
@@ -320,6 +338,8 @@ export const editUser = async (req, res) => {
       [`percentage_${index + 1}`]: nomination?.percentage || null,
       [`mobile_${index + 1}`]: nomination?.contact || null,
     }));
+
+
     const flattenedNominations = nominationsData.reduce((acc, curr) => {
       return { ...acc, ...curr };
     }, {});
@@ -390,7 +410,7 @@ export const editUser = async (req, res) => {
 export const loginUser = async (req, res) => {
   const { username, password } = req.body;
 
-  console.log("Login request received:", { username, password });
+  // console.log("Login request received:", { username, password });
 
   if (!username || !password) {
     return res.status(400).json({ message: "Username and password are required" });
@@ -407,18 +427,18 @@ export const loginUser = async (req, res) => {
 
     // Retrieve and clean the hash
     let hashedPassword = user.password.trim();
-    console.log("Retrieved hash from DB (before cleanup):", hashedPassword);
+    // console.log("Retrieved hash from DB (before cleanup):", hashedPassword);
 
     // Remove the `argon2` prefix if present
     if (hashedPassword.startsWith('argon2$')) {
       hashedPassword = hashedPassword.replace(/^argon2/, ''); // Remove the `argon2` prefix
     }
 
-    console.log("Cleaned hash for verification:", hashedPassword);
+    // console.log("Cleaned hash for verification:", hashedPassword);
 
     // Verify password against the cleaned and prepared hash
     const isMatch = await argon2.verify(`${hashedPassword}`, password);
-    console.log("Password verification result:", isMatch);
+    // console.log("Password verification result:", isMatch);
 
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
@@ -429,7 +449,7 @@ export const loginUser = async (req, res) => {
 
     // Retrieve staff roles from the user data
     const staffRoles = user.staff_roles;
-    console.log("Staff roles:", staffRoles); // Check if staff roles are being retrieved correctly
+    // console.log("Staff roles:", staffRoles); // Check if staff roles are being retrieved correctly
 
     // Generate JWT token with staff_roles included in the payload
     const token = jwt.sign(

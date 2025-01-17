@@ -48,9 +48,9 @@ app.use('/uploads/transaction-slips', express.static(path.join(__dirname, '../up
 
 // Debug middleware to inspect requests
 app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
+    // console.log(`${req.method} ${req.url}`);
+    // console.log('Headers:', req.headers);
+    // console.log('Body:', req.body);
     next();
 });
 
@@ -72,7 +72,7 @@ app.use((err, req, res, next) => {
 });
 
 app.use((req, res, next) => {
-    console.log('Incoming Request:', req.method, req.url);
+    // console.log('Incoming Request:', req.method, req.url);
     next();
 });
 

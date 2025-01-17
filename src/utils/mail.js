@@ -29,7 +29,7 @@ KWS Team`,
 
     // Send the email
     await transporter.sendMail(mailOptions);
-    console.log(`Email sent to ${email}`);
+    // console.log(`Email sent to ${email}`);
   } catch (error) {
     console.error('Error sending email:', error);
     throw new Error('Failed to send approval email.');
