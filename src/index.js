@@ -15,6 +15,7 @@ import sandouqchaTransactionRoutes from './routes/sandouqchaTransactionRoutes.js
 import staffRoutes from './routes/staffRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import nonkwsRoutes from './routes/nonkwsRoutes.js';
+import forgotRoutes from './routes/forgotRoutes.js';
 import { setupEventListeners } from './middleware/eventListener.js';
 
 dotenv.config();
@@ -26,7 +27,7 @@ const __dirname = path.dirname(__filename);  // This will give you the current d
 
 // Enable CORS for frontend connection
 app.use(cors({
-    origin: true, // Allow all origins
+    origin: true, 
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allow these HTTP methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Allow these headers
     credentials: true, // Allow credentials (e.g., cookies)
@@ -64,6 +65,7 @@ app.use('/api/sandouqchaTransaction', sandouqchaTransactionRoutes);
 app.use('/api/staff',staffRoutes);
 app.use('/api/event',eventRoutes);
 app.use('/api/nonkws',nonkwsRoutes);
+app.use('/api/forgot',forgotRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
