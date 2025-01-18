@@ -50,7 +50,7 @@ export const getProfile = async (req, res) => {
             lastName: user.core_kwsmember.last_name,
             typeOfMember: user.core_kwsmember.type_of_member,
             profilePicture: user.core_kwsmember.profile_picture
-              ? `http://45.93.139.244:5786/${user.core_kwsmember.profile_picture}`
+              ? `https://api.kwskwt.com/${user.core_kwsmember.profile_picture}`
               : null,
           }
         : null,
