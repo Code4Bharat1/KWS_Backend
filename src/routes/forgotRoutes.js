@@ -1,12 +1,14 @@
 import { Router } from 'express';
-import { Forgot } from '../controllers/forgotController.js';
+import { requestPasswordReset,resetPassword  } from '../controllers/forgotController.js';
 
 const router  = Router();
 
 
+// Route for requesting a password reset
+router.post('/forgotpassword', requestPasswordReset);  // POST request to generate and send the reset token
 
-router.put('/forgotpassword/username',Forgot);
-
+// Route for resetting the password using the token
+router.post('/resetpassword', resetPassword);
 
 
 
