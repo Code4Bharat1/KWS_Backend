@@ -442,7 +442,8 @@ export const loginUser = async (req, res) => {
   try {
     // Fetch user from the database
     const user = await prisma.users_user.findUnique({ where: { username } });
-
+    console.log("this is uyser",user);
+    
     if (!user) {
       console.error("User not found");
       return res.status(404).json({ message: "User not found" });
@@ -462,7 +463,8 @@ export const loginUser = async (req, res) => {
     // Verify password against the cleaned and prepared hash
     const isMatch = await argon2.verify(`${hashedPassword}`, password);
     // console.log("Password verification result:", isMatch);
-
+    console.log(isMatch);
+    
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
