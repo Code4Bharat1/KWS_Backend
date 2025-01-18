@@ -39,12 +39,15 @@ BigInt.prototype.toJSON = function () {
   return this.toString();
 };
 
+
 export const updateApprovalStatus = async (req, res) => {
   try {
     const { user_id } = req.params;
     const {
       membership_status,
       dob,
+      card_printed_date,
+      card_expiry_date,
       percentage_1,
       percentage_2,
       percentage_3,
@@ -52,14 +55,19 @@ export const updateApprovalStatus = async (req, res) => {
       ...updatedFields
     } = req.body;
 
+    // console.log("[DEBUG] Incoming user_id:", user_id);
+    // console.log("[DEBUG] Incoming request body:", req.body);
+
     let userId;
     try {
-      userId = BigInt(user_id);
+      userId = BigInt(user_id); // Ensure user_id is a BigInt
+      // console.log("[DEBUG] Parsed user_id:", userId);
     } catch (err) {
+      console.error("[ERROR] Invalid user_id format:", err.message);
       return res.status(400).json({ message: "Invalid user_id format." });
     }
 
-    // Validate and convert `percentage_*` fields to integers
+    // Validate and parse `percentage_*` fields
     const parsedPercentages = {
       percentage_1: percentage_1 ? parseInt(percentage_1, 10) : null,
       percentage_2: percentage_2 ? parseInt(percentage_2, 10) : null,
@@ -72,47 +80,77 @@ export const updateApprovalStatus = async (req, res) => {
         (value) => value !== null && isNaN(value)
       )
     ) {
+      console.error("[ERROR] Invalid percentage values provided:", parsedPercentages);
       return res.status(400).json({ message: "Invalid percentage values provided." });
     }
 
-    let dobAsDate = null;
-    if (dob) {
-      dobAsDate = new Date(dob);
-      if (isNaN(dobAsDate.getTime())) {
-        return res.status(400).json({ message: "Invalid date format for dob." });
+    // Validate date fields
+    const parseDate = (dateString) => {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid date format.");
       }
-    }
+      return date;
+    };
 
+    let dobAsDate = dob ? parseDate(dob) : null;
+    let cardPrintedDateAsDate = card_printed_date
+      ? parseDate(card_printed_date)
+      : null;
+    let cardExpiryDateAsDate = card_expiry_date
+      ? parseDate(card_expiry_date)
+      : null;
+
+    // console.log("[DEBUG] Parsed dates:", {
+    //   dob: dobAsDate,
+    //   card_printed_date: cardPrintedDateAsDate,
+    //   card_expiry_date: cardExpiryDateAsDate,
+    // });
+
+    // Fetch existing member
     const existingMember = await prisma.core_kwsmember.findUnique({
       where: { user_id: userId },
     });
 
     if (!existingMember) {
+      console.error("[ERROR] Member not found for user_id:", userId);
       return res.status(404).json({ message: "Member not found." });
     }
 
+    // console.log("[DEBUG] Existing member:", existingMember);
+
     const memberUpdateData = {
       ...updatedFields,
-      ...parsedPercentages, // Include parsed percentages
+      ...parsedPercentages,
       membership_status,
       dob: dobAsDate,
+      card_printed_date: cardPrintedDateAsDate,
+      card_expiry_date: cardExpiryDateAsDate,
       updated_date: new Date(),
     };
-    
+
+    // Remove `user_id` to prevent Prisma error
+    delete memberUpdateData.user_id;
+
+    // console.log("[DEBUG] Prepared member update data:", memberUpdateData);
+
     let newKwsId = existingMember.kwsid;
-    // Handle files from req.files
+
+    // Handle file uploads
     const uploadedFiles = req.files;
     if (uploadedFiles) {
       if (uploadedFiles.profile_picture) {
-        memberUpdateData.profile_picture = uploadedFiles.profile_picture[0].path; // Save file path
+        memberUpdateData.profile_picture = uploadedFiles.profile_picture[0].path;
       }
       if (uploadedFiles.form_scanned) {
-        memberUpdateData.form_scanned = uploadedFiles.form_scanned[0].path; // Save file path
+        memberUpdateData.form_scanned = uploadedFiles.form_scanned[0].path;
       }
       if (uploadedFiles.transactionSlip) {
-        memberUpdateData.transactionSlip = uploadedFiles.transactionSlip[0].path; // Save file path
+        memberUpdateData.transactionSlip = uploadedFiles.transactionSlip[0].path;
       }
     }
+
+    // console.log("[DEBUG] Updated member data with files:", memberUpdateData);
 
     if (
       membership_status.toLowerCase() === "approved" &&
@@ -124,6 +162,9 @@ export const updateApprovalStatus = async (req, res) => {
 
     const userUpdateData = { username: newKwsId };
 
+    // console.log("[DEBUG] User update data:", userUpdateData);
+
+    // Transaction for updating both core_kwsmember and users_user
     const transaction = [
       prisma.core_kwsmember.update({
         where: { user_id: userId },
@@ -135,23 +176,24 @@ export const updateApprovalStatus = async (req, res) => {
       }),
     ];
 
-    let updatedMember;
-    let updatedUser;
+    let updatedMember, updatedUser;
 
     try {
       const results = await prisma.$transaction(transaction);
       updatedMember = results[0];
       updatedUser = results[1];
+      // console.log("[DEBUG] Transaction successful:", { updatedMember, updatedUser });
     } catch (transactionError) {
-      console.error("Transaction failed:", transactionError.message);
+      console.error("[ERROR] Transaction failed:", transactionError.message);
       return res.status(500).json({ message: "Failed to update user information." });
     }
 
     if (membership_status.toLowerCase() === "approved") {
       try {
         await sendApprovalEmail(updatedUser.email, newKwsId);
+        // console.log("[DEBUG] Approval email sent to:", updatedUser.email);
       } catch (emailError) {
-        console.error("Error sending approval email:", emailError.message);
+        console.error("[ERROR] Error sending approval email:", emailError.message);
       }
     }
 
@@ -161,13 +203,14 @@ export const updateApprovalStatus = async (req, res) => {
       updatedUser,
     });
   } catch (error) {
-    console.error("Error updating user:", error.message);
+    console.error("[ERROR] Internal Server Error:", error.message);
     res.status(500).json({
       message: "Internal Server Error.",
       error: error.message,
     });
   }
 };
+
 
 
 
