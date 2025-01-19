@@ -19,7 +19,7 @@ router.delete('/delete/:id',deleteTransactionofIndividual);
 
 router.get('/getlogs/:id',getTransactionslogs);
 
-router.get('/viewlogs/:uid',viewlogs)
+router.get('/viewlogs/:id',viewlogs)
 
 
 

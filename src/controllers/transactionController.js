@@ -23,6 +23,7 @@ export const addTransactions = async (req, res) => {
       amountKWD,
       date,
       remarks,
+      committedId,
     } = req.body;
 
     // Validate the input
@@ -106,9 +107,9 @@ export const addTransactions = async (req, res) => {
         amount: newTransaction.amount,
         date: newTransaction.date,
         remarks: newTransaction.remarks,
-        action: "CREATE",
+        action: "CREATED",
         created_date: new Date(),
-        committed_id: null, // or some valid user ID if available
+        committed_id: committedId, // or some valid user ID if available
         member_id: newTransaction.member_id,
         transaction_id: newTransaction.id,
       },
@@ -136,6 +137,7 @@ export const editTransactionofIndividual = async (req, res) => {
       amountKWD,
       date,
       remarks,
+      committedId,
     } = req.body;
 
     // Validate transaction_id
@@ -217,9 +219,9 @@ export const editTransactionofIndividual = async (req, res) => {
         amount: updatedTransaction.amount,
         date: updatedTransaction.date,
         remarks: updatedTransaction.remarks,
-        action: "UPDATE",
+        action: "UPDATED",
         created_date: new Date(),
-        committed_id: null, // or the user ID that performed the update
+        committed_id: committedId || null, // or the user ID that performed the update
         member_id: updatedTransaction.member_id,
         transaction_id: updatedTransaction.id,
       },
@@ -521,68 +523,90 @@ export const deleteTransactionofIndividual = async (req, res) => {
   }
 };
 
+
 export const viewlogs = async (req, res) => {
   try {
-    // Extract the user ID (uid) from request params
-    const { uid } = req.params;
+    // Extract the transaction ID (from core_membertransaction) from request parameters.
+    let { id } = req.params;
+    console.log("Received id:", id);
 
-    // Validate the user ID
-    if (!uid || isNaN(parseInt(uid, 10))) {
-      return res.status(400).json({ error: "Valid User ID (uid) is required." });
+    // Normalize id by removing any leading zeros.
+    if (typeof id === "string") {
+      id = id.replace(/^0+/, "") || "0"; // Default to "0" if it becomes empty
+    }
+    console.log("Normalized id:", id);
+
+    // Validate that the normalized id is a valid number.
+    if (!id || isNaN(Number(id))) {
+      console.error("Invalid transaction id provided:", id);
+      return res.status(400).json({ error: "Valid transaction ID is required." });
     }
 
-    const userId = parseInt(uid, 10);
-    // console.log("Fetching logs for User ID:", userId);
+    // Convert the normalized id to a BigInt, as defined in your schema.
+    const transactionId = BigInt(id);
+    console.log("Converted transactionId:", transactionId);
 
-    // Fetch logs for the specified user
+    // Validate existence of core member transaction (from core_membertransaction schema)
+    const coreTransaction = await prisma.core_membertransaction.findUnique({
+      where: { id: transactionId },
+    });
+
+    if (!coreTransaction) {
+      console.warn("No core member transaction found with id:", transactionId);
+      return res.status(404).json({ error: "Core member transaction not found." });
+    }
+
+    console.log("Found core member transaction:", coreTransaction);
+
+    // Fetch audit logs where the transaction_id matches the core member transaction id.
     const logs = await prisma.core_auditmembertransactions.findMany({
       where: {
-        member_id: userId,
+        transaction_id: transactionId,
+      },
+      include: {
+        // Include related member details for the committed_id.
+        core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember: {
+          select: {
+            user_id: true,
+            first_name: true,
+            last_name: true,
+            kwsid:true,
+          },
+        },
+      },
+      orderBy: {
+        created_date: "desc", // Order by newest first.
       },
     });
 
-    // If no logs found for the user
+    console.log("Fetched logs:", logs);
+
+    // If no logs are found, return a 404.
     if (!logs || logs.length === 0) {
-      return res.status(404).json({ error: "No logs found for this user." });
+      console.warn("No audit logs found for transactionId:", transactionId);
+      return res.status(404).json({ error: "No logs found for this transaction." });
     }
 
-    // console.log("Fetched logs:", logs);
-
-    // Extract the committed ID from the first log
-    const C_id = parseInt(logs[0].committed_id, 10);
-
-    // Fetch details of the member who committed the action
-    const memberwhodone = await prisma.core_kwsmember.findFirst({
-      where: {
-        user_id: C_id,
-      },
+    // Format logs for cleaner output.
+    const formattedLogs = logs.map((log) => {
+      const committer = log.core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember;
+      return {
+        log_id: log.id,
+        category: log.category,
+        amount: log.amount,
+        date: log.date,
+        remarks: log.remarks || "",
+        action: log.action,
+        created_date: log.created_date,
+        committed_by: committer
+          ? `${committer.first_name} ${committer.last_name} - ${committer.kwsid}`.trim()
+          : "N/A",
+      };
     });
 
-    // If the member who committed the action is not found
-    if (!memberwhodone) {
-      return res
-        .status(404)
-        .json({ error: "Member details for the committed action not found." });
-    }
-
-    // console.log("Member details:", memberwhodone);
-
-    // Format logs
-    const formattedLogs = logs.map((log) => ({
-      log_id: log.id,
-      category: log.category,
-      amount: log.amount,
-      date: log.date,
-      remarks: log.remarks || log.action,
-      action: log.action,
-      created_date: log.created_date,
-      committed_by: memberwhodone.first_name,
-    }));
-
-    // Return the formatted logs
     return res.status(200).json(formattedLogs);
   } catch (error) {
-    console.error("Error fetching logs:", error.message);
+    console.error("Error fetching logs:", error);
     return res.status(500).json({ error: "An internal server error occurred." });
   }
 };
