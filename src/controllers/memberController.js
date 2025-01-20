@@ -226,7 +226,7 @@ export const getAllMembers = async (req, res) => {
         middle_name: true, // Middle Name
         last_name: true, // Last Name
         zone_member: true, // Zone
-        indian_contact_no_1: true, // Contact
+        kuwait_contact: true, // Contact
         type_of_member: true, // Type of Member
       },
       orderBy: {
@@ -241,7 +241,7 @@ export const getAllMembers = async (req, res) => {
       civil_id: member.civil_id,
       name: `${member.first_name} ${member.middle_name || ""} ${member.last_name}`.trim(),
       zone: member.zone_member,
-      contact: member.indian_contact_no_1,
+      contact: member.kuwait_contact,
       typeOfMember: member.type_of_member,
     }));
 

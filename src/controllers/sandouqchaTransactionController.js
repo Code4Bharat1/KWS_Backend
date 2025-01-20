@@ -24,8 +24,6 @@ export const getTransactionList = async (req, res) => {
                 first_name: true,
                 last_name: true,
                 email: true,
-                indian_contact_no_1: true,
-                indian_contact_no_2: true,
                 kuwait_contact: true,
                 zone_member: true,
                 kwsid: true,
@@ -35,7 +33,7 @@ export const getTransactionList = async (req, res) => {
               select: {
                 first_name: true,
                 last_name: true,
-                contact: true,
+                kuwait_contact: true,
               },
             },
           },
@@ -76,8 +74,7 @@ export const getTransactionList = async (req, res) => {
       const zone = holderDetails?.zone_member;
 
       const holderContact =
-        holderDetails?.indian_contact_no_1 ||
-        holderDetails?.indian_contact_no_2 ||
+   
         holderDetails?.kuwait_contact ||
         "No Contact";
 

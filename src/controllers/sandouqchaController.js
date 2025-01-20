@@ -19,9 +19,8 @@ export const getBoxList = async (req, res) => {
             first_name: true,
             last_name: true,
             email: true,
-            indian_contact_no_1: true, 
-            indian_contact_no_2: true,
-            kuwait_contact: true, 
+            kuwait_contact:true,
+             
             zone_member: true,
             kwsid:true,
           }
@@ -60,7 +59,7 @@ export const getBoxList = async (req, res) => {
       if (box.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember) {
         const member = box.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember;
         holderName = `${member.first_name} ${member.last_name} - ${member.zone_member || "No Zone"}`;
-        holderContact = member.indian_contact_no_1 || member.indian_contact_no_2 || member.kuwait_contact || "No Contact";
+        holderContact =  member.kuwait_contact || "No Contact";
       }
       // Check if the holder is a non-member
       else if (box.core_nonkwsmember) {
