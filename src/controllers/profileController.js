@@ -116,6 +116,17 @@ export const editProfile = async (req, res) => {
       updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
 
+    const percentageFields = ['percentage_1', 'percentage_2', 'percentage_3', 'percentage_4'];
+percentageFields.forEach((field) => {
+  if (updateData[field]) {
+    const parsedValue = parseInt(updateData[field], 10);
+    if (isNaN(parsedValue)) {
+      return res.status(400).json({ error: `${field} must be a valid integer.` });
+    }
+    updateData[field] = parsedValue; // Assign the parsed integer back
+  }
+});
+
     // Handle form_scanned upload
     if (req.files && req.files.form_scanned && req.files.form_scanned.length > 0) {
       const scannedForm = req.files.form_scanned[0];
