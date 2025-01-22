@@ -18,6 +18,11 @@ export const getProfile = async (req, res) => {
     } catch (err) {
       return res.status(400).json({ error: "User ID must be a valid number." });
     }
+    const formatDate = (date) => {
+      if (!date) return null;
+      const formattedDate = new Date(date).toISOString().split("T")[0];
+      return formattedDate;
+    };
 
     const user = await prisma.users_user.findUnique({
       where: { id: parsedUserId },
@@ -30,6 +35,8 @@ export const getProfile = async (req, res) => {
             last_name: true,
             type_of_member: true,
             profile_picture: true,
+            card_printed_date:true,
+            card_expiry_date:true,
           },
         },
       },
@@ -49,6 +56,8 @@ export const getProfile = async (req, res) => {
             middleName: user.core_kwsmember.middle_name,
             lastName: user.core_kwsmember.last_name,
             typeOfMember: user.core_kwsmember.type_of_member,
+            cardPrinted: formatDate(user.core_kwsmember.card_printed_date),
+            cardExpiry:formatDate(user.core_kwsmember.card_expiry_date),
             profilePicture: user.core_kwsmember.profile_picture
               ? `https://api.kwskwt.com/${user.core_kwsmember.profile_picture}`
               : null,
@@ -116,6 +125,25 @@ export const editProfile = async (req, res) => {
       updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
 
+
+    if (updateData.card_expiry_date) {
+      const parsedExpiryDate = new Date(updateData.card_expiry_date);
+      if (isNaN(parsedExpiryDate)) {
+        return res.status(400).json({ error: "Invalid card_expiry_date format. Expected ISO-8601 DateTime." });
+      }
+      updateData.card_expiry_date = parsedExpiryDate.toISOString(); // Ensure ISO-8601 DateTime format
+    }
+    
+    // Validate and parse card_printed_date (if applicable)
+    if (updateData.card_printed_date) {
+      const parsedPrintedDate = new Date(updateData.card_printed_date);
+      if (isNaN(parsedPrintedDate)) {
+        return res.status(400).json({ error: "Invalid card_printed_date format. Expected ISO-8601 DateTime." });
+      }
+      updateData.card_printed_date = parsedPrintedDate.toISOString(); // Ensure ISO-8601 DateTime format
+    }
+
+    
     const percentageFields = ['percentage_1', 'percentage_2', 'percentage_3', 'percentage_4'];
 percentageFields.forEach((field) => {
   if (updateData[field]) {
