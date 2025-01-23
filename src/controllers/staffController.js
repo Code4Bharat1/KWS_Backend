@@ -6,6 +6,14 @@ export const getStaffList = async (req, res) => {
     try {
       // Fetch the staff data from the `users_user` table
       const staff = await prisma.users_user.findMany({
+        where: {
+          core_kwsmember: {
+            membership_status: {
+              equals: "Approved", 
+              mode: "insensitive", 
+            },
+          },
+        },
         select: {
           id: true,
           username: true,
@@ -49,6 +57,9 @@ export const getStaffList = async (req, res) => {
       res.status(500).json({ error: "An error occurred while fetching the staff list." });
     }
   };
+
+
+
 
 
   export const editStaff = async (req, res) => {
