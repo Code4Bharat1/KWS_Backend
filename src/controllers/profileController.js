@@ -324,29 +324,21 @@ export const getProfileAllDetails = async (req, res) => {
 
 
 
-
-/**
- * Creates a new update request based on the incoming form data.
- * The updateData is saved as JSON in the `data` field and linked to a member.
- */
-export const editUser = async (req, res) => {
+export const createUpdateRequest = async (req, res) => {
   try {
-    // Expecting member_id and all updated form fields in req.body
-    const memberId = req.body.member_id;
-    const updateData = req.body; // Contains the entire update payload
+    const { memberId, formData } = req.body; // Assume memberId and formData are in the request body
 
-    // Validate input
-    if (!memberId || !updateData) {
-      return res.status(400).json({ message: "Missing required update data." });
+    if (!memberId || !formData) {
+      return res.status(400).json({ message: "Missing required data." });
     }
 
-    // Create a new update request record in core_informationupdate.
+    // Create a new update request in the core_informationupdate table
     const newUpdateRequest = await prisma.core_informationupdate.create({
       data: {
         requested_date: new Date(),
-        updated_date: new Date(), // This can be updated upon processing, if desired.
-        processed: false,
-        data: updateData, // Save the entire update payload as JSON.
+        updated_date: new Date(),
+        processed: false, // Initially, it's not processed
+        data: formData,  // Storing the form data as JSON
         member_id: memberId,
       },
     });
@@ -356,48 +348,93 @@ export const editUser = async (req, res) => {
       updateRequest: newUpdateRequest,
     });
   } catch (error) {
-    console.error("Error in editUser:", error.message);
-    return res
-      .status(500)
-      .json({ message: "Server error during update request." });
+    console.error("Error in createUpdateRequest:", error.message);
+    return res.status(500).json({ message: "Error creating update request." });
   }
 };
 
-/**
- * Returns all pending update requests.
- */
-export const getUpdateRequests = async (req, res) => {
+export const getPendingUpdateRequests = async (req, res) => {
   try {
+    // Fetching all pending update requests from the core_informationupdate table
     const requests = await prisma.core_informationupdate.findMany({
-      where: { processed: false },
-      orderBy: { requested_date: "desc" },
+      where: { processed: false },  // Only fetch unprocessed requests
+      orderBy: { requested_date: 'desc' },  // Ordering by requested date in descending order
+      include: {
+        core_kwsmember: {
+          select: {
+            user_id: true, // Select the user_id from core_kwsmember (which will correspond to member_id)
+            type_of_member: true, // Fetch type_of_member
+            zone_member: true,    // Fetch zone_member
+          },
+        },
+      },
     });
 
+    // Fetch the corresponding user details for each core_kwsmember using the user_id
+    const detailedRequests = await Promise.all(requests.map(async (request) => {
+      if (request.core_kwsmember && request.core_kwsmember.user_id) {
+        const user = await prisma.users_user.findUnique({
+          where: { id: request.core_kwsmember.user_id }, // Get the user based on user_id
+          select: {
+            username: true, 
+          },
+        });
+
+        // Format the requested_date before adding it to the response
+        const formattedDate = new Date(request.requested_date).toLocaleDateString('en-US', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+
+        return {
+          ...request,
+          username: user ? user.username : null,
+          type_of_member: request.core_kwsmember.type_of_member,  // Return type_of_member
+          zone_member: request.core_kwsmember.zone_member,      // Return zone_member
+          requested_date: formattedDate, // Add the formatted requested_date
+        };
+      }
+
+      // If core_kwsmember is not defined or user_id is missing, return the request without username
+      return {
+        ...request,
+        username: null,
+        type_of_member: null,
+        zone_member: null,
+        requested_date: null, // No date if missing
+      };
+    }));
+
+    // Sending the response back to the client with the fetched requests
     return res.status(200).json({
       message: "Pending update requests retrieved successfully.",
-      updateRequests: requests,
+      updateRequests: detailedRequests,  // The list of pending requests with additional user details
     });
   } catch (error) {
-    console.error("Error in getUpdateRequests:", error.message);
-    return res
-      .status(500)
-      .json({ message: "Server error retrieving update requests." });
+    console.error("Error fetching pending requests:", error.message);
+    // Handling errors if something goes wrong during fetching
+    return res.status(500).json({ message: "Error fetching pending update requests." });
   }
 };
 
-/**
- * Approves an update request:
- *  - Reads the stored JSON update data.
- *  - Updates the corresponding member in core_kwsmember.
- *  - Marks the update request as processed.
- */
+
+
+
+
+// Helper function to format date to ISO-8601 format
+const formatDate = (date) => {
+  // If the date is already in ISO format, just return it, otherwise format it
+  return date ? new Date(date).toISOString() : null; 
+};
+
 export const approveUpdateRequest = async (req, res) => {
+  const { updateRequestId, approvedBy } = req.body;
+
   try {
-    const { updateRequestId, approved_by } = req.body;
-    
-    // Fetch the update request record by its id.
     const updateRequest = await prisma.core_informationupdate.findUnique({
-      where: { id: Number(updateRequestId) },
+      where: { id: updateRequestId },
     });
 
     if (!updateRequest) {
@@ -405,43 +442,51 @@ export const approveUpdateRequest = async (req, res) => {
     }
 
     if (updateRequest.processed) {
-      return res
-        .status(400)
-        .json({ message: "This update request has already been processed." });
+      return res.status(400).json({ message: "This update request has already been processed." });
     }
 
-    // Extract the stored update data and member id.
-    const { data: updateData, member_id } = updateRequest;
+    // Format date fields to ISO-8601 if needed
+    const formattedData = { ...updateRequest.data };
 
-    // Update the member data in core_kwsmember.
-    // Ensure that the keys in updateData match the columns of core_kwsmember.
+    // Format application_date, card_expiry_date, dob (and any other date fields)
+    if (formattedData.application_date) {
+      formattedData.application_date = formatDate(formattedData.application_date); // Ensure ISO format
+    }
+
+    if (formattedData.card_expiry_date) {
+      formattedData.card_expiry_date = formatDate(formattedData.card_expiry_date); // Ensure ISO format
+    }
+
+    if (formattedData.card_printed_date) {
+      formattedData.card_printed_date = formatDate(formattedData.card_printed_date); // Ensure ISO format
+    }
+
+    if (formattedData.dob) {
+      formattedData.dob = formatDate(formattedData.dob); // Ensure ISO format
+    }
+
+    // Update the core_kwsmember table with the new data
     const updatedMember = await prisma.core_kwsmember.update({
-      where: { user_id: Number(member_id) },
-      data: {
-        ...updateData,
-      },
+      where: { user_id: updateRequest.member_id },
+      data: formattedData,
     });
 
-    // Mark the update request as processed.
-    const processedRequest = await prisma.core_informationupdate.update({
-      where: { id: Number(updateRequestId) },
+    // Mark the update request as processed
+    await prisma.core_informationupdate.update({
+      where: { id: updateRequestId },
       data: {
         processed: true,
         updated_date: new Date(),
-        approved_by: approved_by || null,
+        approved_by: approvedBy,
       },
     });
 
     return res.status(200).json({
-      message:
-        "Update request approved and member data updated successfully.",
+      message: "Update request approved and member profile updated successfully.",
       updatedMember,
-      processedRequest,
     });
   } catch (error) {
-    console.error("Error in approveUpdateRequest:", error.message);
-    return res
-      .status(500)
-      .json({ message: "Server error during update approval." });
+    console.error("Error approving update request:", error.message);
+    return res.status(500).json({ message: "Error approving update request." });
   }
 };
