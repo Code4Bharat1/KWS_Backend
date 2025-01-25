@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import prisma from "../prismaClient.js";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 
 // register user (add)
 BigInt.prototype.toJSON = function () {
@@ -79,8 +80,30 @@ export const registerUser = async (req, res) => {
         .json({ message: "Invalid gender value. Must be 'Male' or 'Female'." });
     }
 
-    // Check if the email or civil_id is already registered
-    // ... (your existing code for checking existing records)
+    const existingCivilId = await prisma.core_kwsmember.findUnique({
+      where: { civil_id },
+    });
+
+    if (existingCivilId) {
+      return res
+        .status(400)
+        .json({ message: "Civil ID already exists. Please use a unique Civil ID." });
+    }
+
+    // Check if the email is already registered
+    const existingEmail = await prisma.users_user.findFirst({
+      where: { email },
+    });
+
+    if (existingEmail) {
+      return res
+        .status(400)
+        .json({ message: "Email already registered. Please use a different email." });
+    }
+
+
+    const randomSuffix = crypto.randomBytes(3).toString("hex"); // Random 6-character string
+    const username = `${first_name.toLowerCase()}${randomSuffix}`; 
 
     // Hash the password and add a prefix
     const hashedPassword = await argon2.hash(password);
@@ -90,7 +113,7 @@ export const registerUser = async (req, res) => {
     const newUser = await prisma.users_user.create({
       data: {
         email,
-        username: email.split("@")[0],
+        username,
         password: hashedPasswordWithPrefix,
         is_active: true,
         is_staff: false,
@@ -100,17 +123,7 @@ export const registerUser = async (req, res) => {
       },
     });
 
-    // Parse child names (up to 5)
-    // const [
-    //   child_name_1,
-    //   child_name_2,
-    //   child_name_3,
-    //   child_name_4,
-    //   child_name_5,
-    // ] = child_names;
-    // console.log("juend here ",child_names);
-
-    // --- Begin: Parse `nominations` properly ---
+  
     let parsedNominations = [];
     if (typeof nominations === "string") {
       try {
@@ -127,9 +140,7 @@ export const registerUser = async (req, res) => {
     } else {
       return res.status(400).json({ message: "Invalid nominations format." });
     }
-    // --- End: Parse `nominations` ---
 
-    // Process nominations data with percentage conversion.
     const nominationsData = parsedNominations.map((nomination, index) => ({
       [`full_name_${index + 1}`]: nomination?.name || null,
       [`relation_${index + 1}`]: nomination?.relation || null,
@@ -144,9 +155,7 @@ export const registerUser = async (req, res) => {
     const flattenedNominations = nominationsData.reduce((acc, curr) => {
       return { ...acc, ...curr };
     }, {});
-    // --- End nominations processing ---
 
-    // Handle profile picture upload if available.
     let profile_picture = null;
     if (
       req.files &&
@@ -162,9 +171,7 @@ export const registerUser = async (req, res) => {
       fs.renameSync(profilePic.path, uploadPath);
       profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
-console.log("again last try khudse",child_name_1,child_name_2,  child_name_3,  child_name_4,  child_name_5);
 
-    // Create the member record.
     const newMember = await prisma.core_kwsmember.create({
       data: {
         user_id: newUser.id,
@@ -232,6 +239,10 @@ console.log("again last try khudse",child_name_1,child_name_2,  child_name_3,  c
       .json({ message: "Server error during registration." });
   }
 };
+
+
+
+
 
 // get a user (find)
 export const getUser = async (req, res) => {
