@@ -415,6 +415,7 @@ model core_kwsmember {
   zone_member                                                                                     String?                           @db.VarChar(10)
   office_comments                                                                                 String?
   membership_status                                                                               String?                           @db.VarChar(10)
+  requested_membership                                                                            String                            @default("")
   core_attendee                                                                                   core_attendee[]
   core_auditattendee                                                                              core_auditattendee[]
   core_auditevent                                                                                 core_auditevent[]

@@ -59,6 +59,7 @@ export const registerUser = async (req, res) => {
       child_names = [],
       additional_information,
       nominations = [],
+      requested_membership,
     } = req.body;
     // console.log("All i am geting",req.body);
     
@@ -217,11 +218,12 @@ export const registerUser = async (req, res) => {
         child_name_4,
         child_name_5,
         additional_information,
-        profile_picture, // Save the profile picture path.
+        profile_picture, 
         ...flattenedNominations,
         application_date: new Date(),
         updated_date: new Date(),
         membership_status: "pending",
+        requested_membership,
       },
       include: {
         users_user: true, // Fetch the linked user if needed.

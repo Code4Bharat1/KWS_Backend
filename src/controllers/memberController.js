@@ -55,13 +55,12 @@ export const updateApprovalStatus = async (req, res) => {
       ...updatedFields
     } = req.body;
 
-    // console.log("[DEBUG] Incoming user_id:", user_id);
-    // console.log("[DEBUG] Incoming request body:", req.body);
+   
 
     let userId;
     try {
       userId = BigInt(user_id); // Ensure user_id is a BigInt
-      // console.log("[DEBUG] Parsed user_id:", userId);
+  
     } catch (err) {
       console.error("[ERROR] Invalid user_id format:", err.message);
       return res.status(400).json({ message: "Invalid user_id format." });
@@ -101,11 +100,7 @@ export const updateApprovalStatus = async (req, res) => {
       ? parseDate(card_expiry_date)
       : null;
 
-    // console.log("[DEBUG] Parsed dates:", {
-    //   dob: dobAsDate,
-    //   card_printed_date: cardPrintedDateAsDate,
-    //   card_expiry_date: cardExpiryDateAsDate,
-    // });
+   
 
     // Fetch existing member
     const existingMember = await prisma.core_kwsmember.findUnique({
@@ -117,7 +112,18 @@ export const updateApprovalStatus = async (req, res) => {
       return res.status(404).json({ message: "Member not found." });
     }
 
-    // console.log("[DEBUG] Existing member:", existingMember);
+
+    let newKwsId = existingMember.kwsid || "NA";
+
+
+    if (
+      membership_status.toLowerCase() === "approved" &&
+      (!existingMember.kwsid || existingMember.kwsid === "NA")
+    ) {
+      newKwsId = await generateNextKwsId();
+     
+    }
+
 
     const memberUpdateData = {
       ...updatedFields,
@@ -127,16 +133,15 @@ export const updateApprovalStatus = async (req, res) => {
       card_printed_date: cardPrintedDateAsDate,
       card_expiry_date: cardExpiryDateAsDate,
       updated_date: new Date(),
+      ...(membership_status.toLowerCase() === "approved" && { kwsid: newKwsId }),
+    
     };
 
-    // Remove `user_id` to prevent Prisma error
     delete memberUpdateData.user_id;
 
-    // console.log("[DEBUG] Prepared member update data:", memberUpdateData);
 
-    let newKwsId = existingMember.kwsid;
+   
 
-    // Handle file uploads
     const uploadedFiles = req.files;
     if (uploadedFiles) {
       if (uploadedFiles.profile_picture) {
@@ -150,31 +155,23 @@ export const updateApprovalStatus = async (req, res) => {
       }
     }
 
-    // console.log("[DEBUG] Updated member data with files:", memberUpdateData);
 
-    if (
-      membership_status.toLowerCase() === "approved" &&
-      (!existingMember.kwsid || existingMember.kwsid === "NA")
-    ) {
-      newKwsId = await generateNextKwsId();
-      memberUpdateData.kwsid = newKwsId;
-    }
-
-    const userUpdateData = { username: newKwsId };
-
-    // console.log("[DEBUG] User update data:", userUpdateData);
-
-    // Transaction for updating both core_kwsmember and users_user
+  
     const transaction = [
       prisma.core_kwsmember.update({
         where: { user_id: userId },
         data: memberUpdateData,
       }),
-      prisma.users_user.update({
-        where: { id: userId },
-        data: userUpdateData,
-      }),
+   
     ];
+    if (membership_status.toLowerCase() === "approved") {
+      transaction.push(
+        prisma.users_user.update({
+          where: { id: userId },
+          data: { username: newKwsId },
+        })
+      );
+    }
 
     let updatedMember, updatedUser;
 
@@ -218,6 +215,13 @@ export const updateApprovalStatus = async (req, res) => {
 export const getAllMembers = async (req, res) => {
   try {
     const members = await prisma.core_kwsmember.findMany({
+      where: {
+        membership_status: {
+            equals: "Approved", 
+            mode: "insensitive", 
+        
+        },
+      },
       select: {
         user_id:true,
         kwsid: true, // KWS ID
