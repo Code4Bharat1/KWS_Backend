@@ -213,6 +213,14 @@ export const updateApprovalStatus = async (req, res) => {
 
 
 export const getAllMembers = async (req, res) => {
+  const formatDate = (date) => {
+    if (!date) return null;
+    return new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(date));
+  };
   try {
     const members = await prisma.core_kwsmember.findMany({
       where: {
@@ -224,22 +232,30 @@ export const getAllMembers = async (req, res) => {
       },
       select: {
         user_id:true,
-        kwsid: true, // KWS ID
-        civil_id: true, // Civil ID
-        first_name: true, // First Name
-        middle_name: true, // Middle Name
-        last_name: true, // Last Name
-        zone_member: true, // Zone
-        kuwait_contact: true, // Contact
-        type_of_member: true, // Type of Member
+        kwsid: true,
+        civil_id: true,
+        first_name: true,
+        middle_name: true, 
+        last_name: true, 
+        zone_member: true,
+        kuwait_contact: true, 
+        type_of_member: true, 
+        card_printed_date:true,
+        card_expiry_date:true,
       },
       orderBy: {
-        kwsid: "asc", // Change "asc" to "desc" for descending order
+        kwsid: "asc", 
       },
     });
 
-    // Format data for response
-    const formattedMembers = members.map((member) => ({
+    
+
+    const formattedMembers = members.map((member) => {
+
+      const expiryDate = new Date(member.card_expiry_date);
+      const currentDate = new Date();
+      
+      return {
       user_id:member.user_id,
       kwsid: member.kwsid,
       civil_id: member.civil_id,
@@ -247,7 +263,10 @@ export const getAllMembers = async (req, res) => {
       zone: member.zone_member,
       contact: member.kuwait_contact,
       typeOfMember: member.type_of_member,
-    }));
+      cardValidty: `${formatDate(member.card_printed_date)} - ${formatDate(member.card_expiry_date)}`,
+      status: expiryDate > currentDate ? "Active" : "Inactive",
+  };
+  });
 
     // Send response
     res.status(200).json({ members: formattedMembers });

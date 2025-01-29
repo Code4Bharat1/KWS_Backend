@@ -489,18 +489,25 @@ export const getTransactionofIndividual = async (req, res) => {
 
 export const deleteTransactionofIndividual = async (req, res) => {
   try {
-    const { id } = req.params; // UID to identify the transaction to delete
+    const { id } = req.params; // UID of the transaction
 
-    // Validate UID
     if (!id) {
-      return res.status(400).json({ error: "UID is required." });
+      return res.status(400).json({ error: "Transaction ID is required." });
     }
 
-    // Attempt to delete the transaction
-    const deletedTransaction = await prisma.core_membertransaction.delete({
+    // Convert ID to BigInt if needed
+    const transactionId = BigInt(id);
+
+    // First, delete related records in core_auditmembertran
+    await prisma.core_auditmembertransactions.deleteMany({
       where: {
-        id: BigInt(id), // Convert UID to BigInt if your schema requires it
+        transaction_id: transactionId, // Adjust column name if needed
       },
+    });
+
+    // Now, delete the actual transaction
+    const deletedTransaction = await prisma.core_membertransaction.delete({
+      where: { id: transactionId },
     });
 
     res.status(200).json({
@@ -510,16 +517,11 @@ export const deleteTransactionofIndividual = async (req, res) => {
   } catch (error) {
     console.error("Error deleting transaction:", error);
 
-    // Check if the error is due to a non-existent transaction
     if (error.code === "P2025") {
-      return res.status(404).json({
-        error: "Transaction not found. It may have already been deleted.",
-      });
+      return res.status(404).json({ error: "Transaction not found." });
     }
 
-    res
-      .status(500)
-      .json({ error: "An error occurred while deleting the transaction." });
+    res.status(500).json({ error: "An error occurred while deleting the transaction." });
   }
 };
 

@@ -245,6 +245,46 @@ export const registerUser = async (req, res) => {
 
 
 
+export const checkcivilid = async (req,res) => {
+  const { civil_id } = req.query;
+  try {
+    const user = await prisma.core_kwsmember.findUnique({ where: { civil_id } });
+    res.json({ exists: !!user });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const checkemail = async (req, res) => {
+  const { email } = req.query;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email parameter is required" });
+  }
+
+  try {
+    const user = await prisma.core_kwsmember.findFirst({ where: { email } });
+
+    res.json({ exists: !!user });
+  } catch (error) {
+    console.error("Error fetching email:", error.message); // Log the exact error
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // get a user (find)
 export const getUser = async (req, res) => {
@@ -269,6 +309,14 @@ export const getUser = async (req, res) => {
       .json({ message: "Server error during fetching user." });
   }
 };
+
+
+
+
+
+
+
+
 
 // get all users
 export const allUsers = async (req, res) => {
@@ -306,6 +354,10 @@ export const allUsers = async (req, res) => {
     return res.status(500).json({ message: "Server error fetching users." });
   }
 };
+
+
+
+
 
 // edit user (put)
 export const editUser = async (req, res) => {
