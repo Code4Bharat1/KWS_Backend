@@ -131,25 +131,46 @@ export const editEvent = async (req, res) => {
 
   export const deleteEvent = async (req, res) => {
     try {
-      const { id } = req.params; // Get the event ID from the request parameters
+      const { id } = req.params; // Get the event ID from request parameters
   
       // Validate if ID is provided
       if (!id) {
         return res.status(400).json({ error: "Event ID is required" });
       }
   
-      // Delete the event from the database using the ID
+      const numericId = Number(id); // Ensure ID is treated as a number
+  
+      // Step 1: Delete dependent records from related tables first
+      await prisma.core_attendee.deleteMany({
+        where: {
+          event_id: numericId,
+        },
+      });
+  
+      await prisma.core_eventticket.deleteMany({
+        where: {
+          event_id: numericId,
+        },
+      });
+  
+      // Step 2: Now, delete the event from core_event
       const deletedEvent = await prisma.core_event.delete({
         where: {
-          id: Number(id), // Ensure the ID is treated as a number
+          id: numericId,
         },
       });
   
       // Return success message
       res.status(200).json({ message: "Event deleted successfully", deletedEvent });
+  
     } catch (error) {
       console.error("Error deleting event:", error);
-      res.status(500).json({ error: "An error occurred while deleting the event" });
+  
+      if (error.code === "P2025") {
+        return res.status(404).json({ error: "Event not found." });
+      }
+  
+      res.status(500).json({ error: "An error occurred while deleting the event." });
     }
   };
   
@@ -321,29 +342,47 @@ export const editTicket = async (req, res) => {
 
 export const deleteTicket = async (req, res) => {
   try {
-    const { ticket_no } = req.params; // Get the ticket number from the request parameters
-    const { event_id } = req.body; // Get event_id from the body
+    const { ticket_no } = req.params; // Ticket Number from request
+    const { event_id } = req.body; // Event ID from request body
 
-    // Ensure both ticket_no and event_id are provided
+    // Validate required parameters
     if (!ticket_no || !event_id) {
-      return res.status(400).json({ error: 'Ticket number and event ID are required' });
+      return res.status(400).json({ error: "Ticket number and event ID are required." });
     }
 
-    // Delete the ticket from the database using the composite unique constraint
-    const deletedTicket = await prisma.core_eventticket.delete({
+    // Convert `event_id` and `ticket_no` to BigInt
+    const eventIdBigInt = BigInt(event_id);
+    const ticketNoBigInt = BigInt(ticket_no); // Convert ticket_no to BigInt
+
+    // Step 1: Delete all attendees linked to this ticket
+    await prisma.core_attendee.deleteMany({
       where: {
-        event_id_ticket_no: {  // Use the composite unique field
-          event_id: Number(event_id),
-          ticket_no: ticket_no,
-        },
+        ticket_id: ticketNoBigInt, // Now ticket_id is a BigInt
+        event_id: eventIdBigInt, // event_id must be a BigInt
       },
     });
 
-    // Return a success message
-    res.status(200).json({ message: 'Ticket deleted successfully', deletedTicket });
+    // Step 2: Delete the ticket after related attendees are removed
+    const deletedTicket = await prisma.core_eventticket.delete({
+      where: {
+        id: ticketNoBigInt, // Since id is a BigInt, use it directly
+      },
+    });
+
+    // Success Response
+    res.status(200).json({ message: "Ticket deleted successfully", deletedTicket });
+
   } catch (error) {
-    console.error('Error deleting ticket:', error);
-    res.status(500).json({ error: 'An error occurred while deleting the ticket' });
+    console.error("Error deleting ticket:", error);
+
+    // Handle Foreign Key Constraint Error (Prisma P2003)
+    if (error.code === "P2003") {
+      return res.status(400).json({
+        error: "Cannot delete ticket because it has associated records in core_attendee.",
+      });
+    }
+
+    res.status(500).json({ error: "An error occurred while deleting the ticket." });
   }
 };
 
