@@ -516,6 +516,10 @@ export const loginUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    if (!user.is_active) {
+      return res.status(403).json({ message: "Account is inactive. Please contact support." });
+    }
+
     // Retrieve and clean the hash
     let hashedPassword = user.password.trim();
     // console.log("Retrieved hash from DB (before cleanup):", hashedPassword);

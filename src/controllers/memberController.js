@@ -225,7 +225,7 @@ export const getAllMembers = async (req, res) => {
     const members = await prisma.core_kwsmember.findMany({
       where: {
         membership_status: {
-            equals: "Approved", 
+          in: ["approved", "inactive"],
             mode: "insensitive", 
         
         },
@@ -242,19 +242,16 @@ export const getAllMembers = async (req, res) => {
         type_of_member: true, 
         card_printed_date:true,
         card_expiry_date:true,
+        membership_status: true,
       },
       orderBy: {
         kwsid: "asc", 
       },
     });
 
-    
 
     const formattedMembers = members.map((member) => {
-
-      const expiryDate = new Date(member.card_expiry_date);
-      const currentDate = new Date();
-      
+ 
       return {
       user_id:member.user_id,
       kwsid: member.kwsid,
@@ -263,8 +260,9 @@ export const getAllMembers = async (req, res) => {
       zone: member.zone_member,
       contact: member.kuwait_contact,
       typeOfMember: member.type_of_member,
-      cardValidty: `${formatDate(member.card_printed_date)} - ${formatDate(member.card_expiry_date)}`,
-      status: expiryDate > currentDate ? "Active" : "Inactive",
+      cardPrinted:formatDate(member.card_printed_date),
+      cardValidty: formatDate(member.card_expiry_date) ,
+      status: member.membership_status === "approved" ? "active" : "inactive" ,
   };
   });
 

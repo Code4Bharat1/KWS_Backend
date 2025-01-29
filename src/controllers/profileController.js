@@ -92,7 +92,7 @@ export const editProfile = async (req, res) => {
       return res.status(400).json({ error: "User ID must be a valid number." });
     }
 
-    const { profile_picture, form_scanned, application_date, dob, ...otherFields } = req.body;
+    const { profile_picture, form_scanned, application_date,membership_status, dob, ...otherFields } = req.body;
     const updateData = { ...otherFields };
 
     // Validate and parse dob (date of birth)
@@ -167,13 +167,30 @@ percentageFields.forEach((field) => {
       updateData.form_scanned = `uploads/form-scanned/${scannedForm.filename}`;
     }
 
-    // Update the user data in Prisma
-    const updatedUser = await prisma.core_kwsmember.update({
-      where: { user_id: parsedUserId },
-      data: {
-        ...updateData, // Update all fields in the `updateData` object
-      },
-    });
+
+    let isActiveStatus = null;
+    if (membership_status) {
+      if (membership_status.toLowerCase() === "inactive") {
+        isActiveStatus = false;
+      } else if (membership_status.toLowerCase() === "approved") {
+        isActiveStatus = true;
+      }
+      updateData.membership_status = membership_status; // Ensure membership_status gets updated
+    }
+
+    const [updatedUser] = await prisma.$transaction([
+      prisma.core_kwsmember.update({
+        where: { user_id: parsedUserId },
+        data: { ...updateData },
+      }),
+      isActiveStatus !== null
+        ? prisma.users_user.update({
+            where: { id: parsedUserId },
+            data: { is_active: isActiveStatus },
+          })
+        : Promise.resolve(), 
+    ]);
+
 
     return res.status(200).json({ message: "User profile updated successfully", user: updatedUser });
   } catch (error) {
@@ -284,6 +301,7 @@ export const getProfileAllDetails = async (req, res) => {
         zone_member: true,
         follow_up_member: true,
         office_comments: true,
+        membership_status:true,
       },
     });
 
