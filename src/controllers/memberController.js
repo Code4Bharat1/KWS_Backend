@@ -280,30 +280,116 @@ export const getAllMembers = async (req, res) => {
 export const getChart = async (req, res) => {
   try {
     // Query to get the count of members per zone
-    const zoneData = await prisma.core_kwsmember.groupBy({
-      by: ['zone_member'],
-      _count: {
-        zone_member: true,
-      },
+    const rawZoneData = await prisma.core_kwsmember.findMany({
+      select: { zone_member: true },
     });
 
-    // Format the data as needed for the chart
+    // Normalize zone names (case-insensitive grouping)
+    const zoneCounts = {};
+    const originalZoneNames = {};
+
+    rawZoneData.forEach((entry) => {
+      if (!entry.zone_member) return; // Skip if zone_member is null
+
+      const normalizedZone = entry.zone_member.trim().toLowerCase(); // Convert to lowercase
+      if (!zoneCounts[normalizedZone]) {
+        zoneCounts[normalizedZone] = 0;
+        originalZoneNames[normalizedZone] = entry.zone_member.trim(); // Store original name
+      }
+      zoneCounts[normalizedZone] += 1;
+    });
+
+    // Convert grouped data to array
+    const zoneData = Object.keys(zoneCounts).map((normalizedZone) => ({
+      zone_member: originalZoneNames[normalizedZone], // Restore original casing
+      count: zoneCounts[normalizedZone],
+    }));
+
+    // Define a larger set of predefined colors
+    const predefinedColors = [
+      "#CCDF92", "#DE3163", "#10B981", "#BE3144", "#FFA520",
+      "#FF6384", "#36A2EB", "#4BC0C0", "#9966FF", "#FF9F40",
+    ];
+
+    // Generate additional random colors if needed
+    const getRandomColor = () =>
+      `#${Math.floor(Math.random() * 16777215).toString(16)}`;
+
+    // Function to darken a color slightly for border contrast
+    const darkenColor = (hex, amount = 20) => {
+      let color = hex.replace(/^#/, "");
+      if (color.length === 3) {
+        color = color
+          .split("")
+          .map((char) => char + char)
+          .join("");
+      }
+      const num = parseInt(color, 16);
+      const r = Math.max(0, (num >> 16) - amount);
+      const g = Math.max(0, ((num >> 8) & 0x00ff) - amount);
+      const b = Math.max(0, (num & 0x0000ff) - amount);
+      return `rgb(${r}, ${g}, ${b})`;
+    };
+
+    // Assign colors dynamically
+    const backgroundColors = zoneData.map((_, index) =>
+      predefinedColors[index] || getRandomColor()
+    );
+
+    // Generate darker border colors from background colors
+    const borderColors = backgroundColors.map((color) => darkenColor(color));
+
+    // Format the data for Chart.js
     const chartData = {
-      labels: zoneData.map((zone) => zone.zone_member),
+      labels: zoneData.map((zone) => zone.zone_member), // Restored original names
       datasets: [
         {
-          data: zoneData.map((zone) => zone._count.zone_member),
-          backgroundColor: ["#3B82F6", "#F87171", "#10B981", "#FBBF24", "#FFA520"],  // Custom colors for each zone
-          borderColor: ["#2563EB", "#DC2626", "#059669", "#D97706", "#FFA599"],
-          borderWidth: 1,
+          data: zoneData.map((zone) => zone.count),
+          backgroundColor: backgroundColors,
+          borderColor: borderColors,
+          borderWidth: 2,
         },
       ],
     };
 
-    // Send the chart data in response
+    // Send response
     res.json(chartData);
   } catch (error) {
-    console.error('Error fetching chart data:', error);
-    res.status(500).json({ error: 'An error occurred while fetching chart data' });
+    console.error("Error fetching chart data:", error);
+    res.status(500).json({ error: "An error occurred while fetching chart data" });
   }
 };
+
+
+
+
+export const memberCount = async (req, res)=> {
+  try {
+    const count = await prisma.core_kwsmember.count();
+
+    return res.status(200).json({ count }); 
+  } catch (error) {
+    console.error("Error fetching transaction count:", error.message);
+    return res.status(500).json({ error: "Server error while fetching transaction count." });
+  }
+};
+
+
+export const pendingCount = async(req, res)=> {
+  try {
+    const count = await prisma.core_kwsmember.count(
+      {
+        where: {
+          membership_status: "pending", 
+        },
+      },
+    );
+
+    return res.status(200).json({ count }); 
+  } catch (error) {
+    console.error("Error fetching transaction count:", error.message);
+    return res.status(500).json({ error: "Server error while fetching transaction count." });
+  }
+
+}
+

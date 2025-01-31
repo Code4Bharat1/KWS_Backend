@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-import {getBoxList,addBox,getBox,editBox,deleteBox,addBoxForNon,getBoxLogs} from '../controllers/sandouqchaController.js';
+import {getBoxList,addBox,getBox,editBox,deleteBox,addBoxForNon,getBoxLogs,getboxcount,inusecount} from '../controllers/sandouqchaController.js';
 
 const router = Router();
 
@@ -19,6 +19,12 @@ router.delete('/deletebox/:number',deleteBox);
 
 
 router.get('/getboxlogs/:number',getBoxLogs);
+
+
+router.get('/getcount',getboxcount);
+
+
+router.get('/inusecount', inusecount);
 
 
 

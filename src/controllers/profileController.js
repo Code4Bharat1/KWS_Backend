@@ -508,3 +508,19 @@ export const approveUpdateRequest = async (req, res) => {
     return res.status(500).json({ message: "Error approving update request." });
   }
 };
+
+
+
+export const pendingrequest = async(req, res)=> {
+  try {
+    const count = await prisma.core_informationupdate.count(
+      {
+        where: { processed: false }, 
+   }, );
+
+    return res.status(200).json({ count }); 
+  } catch (error) {
+    console.error("Error fetching transaction count:", error.message);
+    return res.status(500).json({ error: "Server error while fetching transaction count." });
+  }
+}

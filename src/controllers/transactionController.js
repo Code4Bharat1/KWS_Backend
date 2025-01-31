@@ -612,3 +612,18 @@ export const viewlogs = async (req, res) => {
     return res.status(500).json({ error: "An internal server error occurred." });
   }
 };
+
+
+
+
+export const transactioncount = async (req, res) => {
+  try {
+    // Get total count of transactions (counting rows in core_membertransaction)
+    const count = await prisma.core_membertransaction.count();
+
+    return res.status(200).json({ count }); // Returning "count" instead of "transaction_count"
+  } catch (error) {
+    console.error("Error fetching transaction count:", error.message);
+    return res.status(500).json({ error: "Server error while fetching transaction count." });
+  }
+};

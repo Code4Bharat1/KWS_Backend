@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getProfile, editProfile,getProfileAllDetails ,getPendingUpdateRequests,createUpdateRequest,approveUpdateRequest} from '../controllers/profileController.js';
+import { getProfile, editProfile,getProfileAllDetails ,getPendingUpdateRequests,createUpdateRequest,approveUpdateRequest,pendingrequest} from '../controllers/profileController.js';
 import {uploadFiles } from '../middleware/fileUpload.js';
 const router = Router();
 
@@ -20,6 +20,8 @@ router.put('/editprofile/:user_id',uploadFiles, editProfile);
 
 
   router.post("/approve", approveUpdateRequest);
+
+  router.get("/pendingrequest",pendingrequest);
 
 
 

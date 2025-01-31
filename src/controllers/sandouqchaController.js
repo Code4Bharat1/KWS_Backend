@@ -625,3 +625,43 @@ export const getBoxLogs = async (req, res) => {
     return res.status(500).json({ error: "An error occurred while fetching the box logs." });
   }
 };
+
+
+
+export const getboxcount = async (req, res) => {
+  try {
+    // Get total count of transactions (counting rows in core_membertransaction)
+    const count = await prisma.core_sandouqchaboxholder.count();
+
+    return res.status(200).json({ count }); // Returning "count" instead of "transaction_count"
+  } catch (error) {
+    console.error("Error fetching transaction count:", error.message);
+    return res.status(500).json({ error: "Server error while fetching transaction count." });
+  }
+};
+
+
+
+export const inusecount = async (req, res) => {
+  try {
+    // Count boxes that are currently in use (where in_use is true)
+    const inUse = await prisma.core_sandouqchaboxholder.count({
+      where: { in_use: true }, // Boolean field
+    });
+
+    // Count total number of boxes
+    const total = await prisma.core_sandouqchaboxholder.count();
+
+    // Calculate usage percentage
+    const usagePercentage = total > 0 ? ((inUse / total) * 100).toFixed(2) : 0;
+
+    return res.status(200).json({
+      in_use: inUse,
+      total: total,
+      usage_percentage: usagePercentage,
+    });
+  } catch (error) {
+    console.error("Error fetching in-use count:", error);
+    return res.status(500).json({ error: "Server error while fetching in-use count." });
+  }
+};

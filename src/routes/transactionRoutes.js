@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import {getTransactions,addTransactions,getTransactionofIndividual,editTransactionofIndividual,deleteTransactionofIndividual,getTransactionslogs,viewlogs} from '../controllers/transactionController.js';
+import {getTransactions,addTransactions,getTransactionofIndividual,editTransactionofIndividual,deleteTransactionofIndividual,getTransactionslogs,viewlogs,transactioncount} from '../controllers/transactionController.js';
 
 
 const router = Router();
@@ -19,7 +19,10 @@ router.delete('/delete/:id',deleteTransactionofIndividual);
 
 router.get('/getlogs/:id',getTransactionslogs);
 
-router.get('/viewlogs/:id',viewlogs)
+router.get('/viewlogs/:id',viewlogs);
+
+
+router.get('/transactioncount', transactioncount);
 
 
 
