@@ -333,7 +333,7 @@ export const getProfileAllDetails = async (req, res) => {
     coreKwsMember.card_printed_date = formatDate(coreKwsMember.card_printed_date);
     coreKwsMember.card_expiry_date = formatDate(coreKwsMember.card_expiry_date);
 
-    const BASE_URL = "https://api.kwskwt.com/"; // Base URL of your production server
+    const BASE_URL = "https://api.kwskwt.com"; // Base URL of your production server
 
     // Ensure the profile_picture URL is correctly formed
     coreKwsMember.profile_picture = coreKwsMember.profile_picture
@@ -341,7 +341,7 @@ export const getProfileAllDetails = async (req, res) => {
         ? coreKwsMember.profile_picture.includes("localhost")
           ? coreKwsMember.profile_picture.replace("http://localhost:5786", BASE_URL) // Remove localhost and add BASE_URL
           : coreKwsMember.profile_picture
-        : `${BASE_URL}/${coreKwsMember.profile_picture.startsWith("/") ? "" : "/"}${coreKwsMember.profile_picture}` // If it's a relative URL, prepend BASE_URL with a slash
+        : `${BASE_URL}/${coreKwsMember.profile_picture.startsWith("") ? "" : ""}${coreKwsMember.profile_picture}` // If it's a relative URL, prepend BASE_URL with a slash
       : null;
     
     // Ensure the form_scanned URL is correctly formed
@@ -350,7 +350,7 @@ export const getProfileAllDetails = async (req, res) => {
         ? coreKwsMember.form_scanned.includes("localhost")
           ? coreKwsMember.form_scanned.replace("http://localhost:5786", BASE_URL) // Remove localhost and add BASE_URL
           : coreKwsMember.form_scanned
-        : `${BASE_URL}/${coreKwsMember.form_scanned.startsWith("/") ? "" : "/"}${coreKwsMember.form_scanned}` // If it's a relative URL, prepend BASE_URL with a slash
+        : `${BASE_URL}/${coreKwsMember.form_scanned.startsWith("") ? "" : ""}${coreKwsMember.form_scanned}` // If it's a relative URL, prepend BASE_URL with a slash
       : null;
   
     // console.log("Final Profile Picture URL:", coreKwsMember.profile_picture);
