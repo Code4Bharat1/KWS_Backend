@@ -353,8 +353,8 @@ export const getProfileAllDetails = async (req, res) => {
         : `${BASE_URL}/${coreKwsMember.form_scanned.startsWith("/") ? "" : "/"}${coreKwsMember.form_scanned}` // If it's a relative URL, prepend BASE_URL with a slash
       : null;
   
-    console.log("Final Profile Picture URL:", coreKwsMember.profile_picture);
-    console.log("Final Scanned Form URL:", coreKwsMember.form_scanned);
+    // console.log("Final Profile Picture URL:", coreKwsMember.profile_picture);
+    // console.log("Final Scanned Form URL:", coreKwsMember.form_scanned);
 
     return res.status(200).json({ data: coreKwsMember });
   } catch (error) {
