@@ -43,7 +43,7 @@ setupEventListeners(process);
 app.use('/uploads/profile-pictures', express.static(path.join(__dirname, '../uploads/profile-pictures')));
 app.use('/profile-pictures', express.static(path.join(__dirname, '../profile-pictures')));
 app.use('/uploads/form-scanned', express.static(path.join(__dirname, '../uploads/form-scanned')));
-app.use('/form-scanned', express.static(path.join(__dirname, '../form-scanned')));
+app.use('/scanned-forms', express.static(path.join(__dirname, '../scanned-forms')));
 app.use('/uploads/transaction-slips', express.static(path.join(__dirname, '../uploads/transaction-slips')));
 
 
