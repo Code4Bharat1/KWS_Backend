@@ -92,7 +92,7 @@ export const editProfile = async (req, res) => {
       return res.status(400).json({ error: "User ID must be a valid number." });
     }
 
-    const { profile_picture, form_scanned, application_date,membership_status, dob, ...otherFields } = req.body;
+    const { profile_picture, form_scanned, application_date,membership_status,kwsid,  dob, ...otherFields } = req.body;
     const updateData = { ...otherFields };
 
     // Validate and parse dob (date of birth)
@@ -183,6 +183,14 @@ percentageFields.forEach((field) => {
         where: { user_id: parsedUserId },
         data: { ...updateData },
       }),
+
+      // ✅ Update `users_user` username if `kwsid` is present
+      kwsid
+        ? prisma.users_user.update({
+            where: { id: parsedUserId },
+            data: { username: kwsid },
+          })
+        : Promise.resolve(),
       isActiveStatus !== null
         ? prisma.users_user.update({
             where: { id: parsedUserId },
