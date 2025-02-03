@@ -334,19 +334,14 @@ export const getProfileAllDetails = async (req, res) => {
     coreKwsMember.card_expiry_date = formatDate(coreKwsMember.card_expiry_date);
 
 
-
+   
     coreKwsMember.profile_picture = coreKwsMember.profile_picture
-      ? coreKwsMember.profile_picture.startsWith("http")
-        ? coreKwsMember.profile_picture // If it's already a full URL, no need to prepend
-        : `https://api.kwskwt.com/${coreKwsMember.profile_picture.startsWith("/") ? "" : "/"}${coreKwsMember.profile_picture}` // If it's a relative URL, prepend BASE_URL
-      : null;
-    
-    // Ensure the form_scanned URL is correctly formed
-    coreKwsMember.form_scanned = coreKwsMember.form_scanned
-      ? coreKwsMember.form_scanned.startsWith("http")
-        ? coreKwsMember.form_scanned // If it's already a full URL, no need to prepend
-        : `https://api.kwskwt.com/${coreKwsMember.form_scanned.startsWith("/") ? "" : "/"}${coreKwsMember.form_scanned}` // If it's a relative URL, prepend BASE_URL
-      : null;
+    ? `https://api.kwskwt.com/${coreKwsMember.profile_picture.startsWith("/") ? "" : "/"}${coreKwsMember.profile_picture}`
+    : null;
+  
+  coreKwsMember.form_scanned = coreKwsMember.form_scanned
+    ? `https://api.kwskwt.com/${coreKwsMember.form_scanned.startsWith("/") ? "" : "/"}${coreKwsMember.form_scanned}`
+    : null;
 
     console.log("Final Profile Picture URL:", coreKwsMember.profile_picture);
     console.log("Final Scanned Form URL:", coreKwsMember.form_scanned);
