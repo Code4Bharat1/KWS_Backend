@@ -2,6 +2,7 @@
 import { PrismaClient } from "@prisma/client";
 import path from 'path';
 import fs from 'fs';
+import { log } from "console";
 const prisma = new PrismaClient();
 
 export const getProfile = async (req, res) => {
@@ -61,10 +62,13 @@ export const getProfile = async (req, res) => {
             profilePicture: user.core_kwsmember.profile_picture
               ? `https://api.kwskwt.com/${user.core_kwsmember.profile_picture}`
               : null,
+              
           }
         : null,
+        
     };
 
+    // console.log(user.core_kwsmember.profile_picture);
     // console.log("Constructed Response:", response);
 
     return res.status(200).json({ user: response });
@@ -329,17 +333,23 @@ export const getProfileAllDetails = async (req, res) => {
     coreKwsMember.card_printed_date = formatDate(coreKwsMember.card_printed_date);
     coreKwsMember.card_expiry_date = formatDate(coreKwsMember.card_expiry_date);
 
-    if (coreKwsMember.profile_picture) {
-      coreKwsMember.profile_picture = `${req.protocol}://${req.get(
-        "host"
-      )}${coreKwsMember.profile_picture}`;
-    }
 
-    if (coreKwsMember.form_scanned) {
-      coreKwsMember.form_scanned = `${req.protocol}://${req.get(
-        "host"
-      )}${coreKwsMember.form_scanned}`;
-    }
+
+    coreKwsMember.profile_picture = coreKwsMember.profile_picture
+      ? coreKwsMember.profile_picture.startsWith("http")
+        ? coreKwsMember.profile_picture // If it's already a full URL, no need to prepend
+        : `https://api.kwskwt.com/${coreKwsMember.profile_picture.startsWith("/") ? "" : "/"}${coreKwsMember.profile_picture}` // If it's a relative URL, prepend BASE_URL
+      : null;
+    
+    // Ensure the form_scanned URL is correctly formed
+    coreKwsMember.form_scanned = coreKwsMember.form_scanned
+      ? coreKwsMember.form_scanned.startsWith("http")
+        ? coreKwsMember.form_scanned // If it's already a full URL, no need to prepend
+        : `https://api.kwskwt.com/${coreKwsMember.form_scanned.startsWith("/") ? "" : "/"}${coreKwsMember.form_scanned}` // If it's a relative URL, prepend BASE_URL
+      : null;
+
+    console.log("Final Profile Picture URL:", coreKwsMember.profile_picture);
+    console.log("Final Scanned Form URL:", coreKwsMember.form_scanned);
 
     return res.status(200).json({ data: coreKwsMember });
   } catch (error) {
