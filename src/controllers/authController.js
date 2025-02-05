@@ -277,6 +277,25 @@ export const checkemail = async (req, res) => {
 
 
 
+export const checkkwsid = async(req, res)=> {
+  const { kwsid } = req.query;
+
+  if (!kwsid) {
+    return res.status(400).json({ message: "KWS ID parameter is required" });
+  }
+
+  try {
+    const user = await prisma.core_kwsmember.findFirst({ where: { kwsid } });
+
+    res.json({ exists: !!user });
+  } catch (error) {
+    console.error("Error fetching kwsid:", error.message); // Log the exact error
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+
+
 
 
 

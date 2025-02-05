@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { loginUser, registerUser , getUser ,allUsers, editUser,checkcivilid, checkemail} from '../controllers/authController.js';
+import { loginUser, registerUser , getUser ,allUsers,checkkwsid, editUser,checkcivilid, checkemail} from '../controllers/authController.js';
 import { uploadFiles } from '../middleware/fileUpload.js';
 const router = Router();
 
@@ -10,6 +10,8 @@ router.post('/register', uploadFiles,registerUser);
 router.get('/civilid', checkcivilid);
 
 router.get('/email', checkemail);
+
+router.get('/kwsid',checkkwsid);
 
 
 
