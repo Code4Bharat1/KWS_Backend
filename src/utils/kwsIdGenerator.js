@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 export const generateNextKwsId = async () => {
   try {
     // Default start number
-    let nextIdNumber = 5000;
+    let nextIdNumber = 2900;
 
     // Fetch the latest KWS ID from the database
     let lastMember = await prisma.core_kwsmember.findFirst({

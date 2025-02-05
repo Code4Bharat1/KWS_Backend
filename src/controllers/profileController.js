@@ -185,7 +185,7 @@ percentageFields.forEach((field) => {
     const [updatedUser] = await prisma.$transaction([
       prisma.core_kwsmember.update({
         where: { user_id: parsedUserId },
-        data: { ...updateData },
+        data: { ...updateData , kwsid:kwsid },
       }),
 
       // ✅ Update `users_user` username if `kwsid` is present
