@@ -394,9 +394,12 @@ export const createUpdateRequest = async (req, res) => {
   }
 };
 
+
+
+
 export const getPendingUpdateRequests = async (req, res) => {
   try {
-    // Fetching all pending update requests from the core_informationupdate table
+    // Fetch all pending update requests from the core_informationupdate table
     const requests = await prisma.core_informationupdate.findMany({
       where: { processed: false },  // Only fetch unprocessed requests
       orderBy: { requested_date: 'desc' },  // Ordering by requested date in descending order
@@ -404,49 +407,99 @@ export const getPendingUpdateRequests = async (req, res) => {
         core_kwsmember: {
           select: {
             user_id: true, // Select the user_id from core_kwsmember (which will correspond to member_id)
-            type_of_member: true, // Fetch type_of_member
-            zone_member: true,    // Fetch zone_member
+            type_of_member: true,
+            zone_member: true,
+            first_name: true,
+            last_name: true,    
+            education_qualification:true,
+            email:true,
+            profession:true,
+            kuwait_contact:true,
+            kuwait_whatsapp:true,
+            marital_status:true,
+            family_in_kuwait:true,
+            flat_no:true,
+            floor_no:true,
+            block_no:true,
+            building_name_no:true,
+            street_no_name:true,
+            area:true,
+            residence_complete_address:true,
+            pin_no_india:true,
+            mohalla_village:true,
+            taluka:true,
+            district:true,
+            native_pin_no:true,
+            emergency_name_kuwait:true,
+            emergency_contact_kuwait:true,
+            emergency_name_india:true,
+            emergency_contact_india:true,
+            father_name:true,
+            mother_name:true,
+            spouse_name:true,
+            child_name_1:true,
+            child_name_2:true,
+            child_name_3:true,
+            child_name_4:true,
+            child_name_5:true,
+            full_name_1:true,
+            relation_1:true,
+            percentage_1:true,
+            mobile_1:true,
+            full_name_2:true,
+            relation_2:true,
+            percentage_2:true,
+            mobile_2:true,
+            full_name_3:true,
+            relation_3:true,
+            percentage_3:true,
+            mobile_3:true,
+            full_name_4:true,
+            relation_4:true,
+            percentage_4:true,
+            mobile_4:true,
+
           },
         },
       },
     });
 
-    // Fetch the corresponding user details for each core_kwsmember using the user_id
+    // Process each request to include both previous and requested data
     const detailedRequests = await Promise.all(requests.map(async (request) => {
+      let user = null;
+
       if (request.core_kwsmember && request.core_kwsmember.user_id) {
-        const user = await prisma.users_user.findUnique({
+        user = await prisma.users_user.findUnique({
           where: { id: request.core_kwsmember.user_id }, // Get the user based on user_id
           select: {
             username: true, 
           },
         });
-
-        // Format the requested_date before adding it to the response
-        const formattedDate = new Date(request.requested_date).toLocaleDateString('en-US', {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
-
-        return {
-          ...request,
-          username: user ? user.username : null,
-          type_of_member: request.core_kwsmember.type_of_member,  // Return type_of_member
-          zone_member: request.core_kwsmember.zone_member,      // Return zone_member
-          requested_date: formattedDate, // Add the formatted requested_date
-        };
       }
 
-      // If core_kwsmember is not defined or user_id is missing, return the request without username
+      // Format the requested_date before adding it to the response
+      const formattedDate = new Date(request.requested_date).toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+
       return {
         ...request,
-        username: null,
-        type_of_member: null,
-        zone_member: null,
-        requested_date: null, // No date if missing
+        username: user ? user.username : null,
+        type_of_member: request.core_kwsmember?.type_of_member,  // Return type_of_member
+        zone_member: request.core_kwsmember?.zone_member, 
+        name: `${request.core_kwsmember?.first_name || ""} ${request.core_kwsmember?.last_name || ""}`,  
+        requested_date: formattedDate, // Add the formatted requested_date
+        
+        // Add previous and requested data for display
+        previous_data: request.core_kwsmember,  // Previous data from core_kwsmember
+        requested_data: request.data,  // Requested update data from core_informationupdate (stored JSON)
       };
     }));
+
+    
 
     // Sending the response back to the client with the fetched requests
     return res.status(200).json({
