@@ -530,13 +530,13 @@ export const viewlogs = async (req, res) => {
   try {
     // Extract the transaction ID (from core_membertransaction) from request parameters.
     let { id } = req.params;
-    console.log("Received id:", id);
+    // console.log("Received id:", id);
 
     // Normalize id by removing any leading zeros.
     if (typeof id === "string") {
       id = id.replace(/^0+/, "") || "0"; // Default to "0" if it becomes empty
     }
-    console.log("Normalized id:", id);
+    // console.log("Normalized id:", id);
 
     // Validate that the normalized id is a valid number.
     if (!id || isNaN(Number(id))) {
@@ -546,7 +546,7 @@ export const viewlogs = async (req, res) => {
 
     // Convert the normalized id to a BigInt, as defined in your schema.
     const transactionId = BigInt(id);
-    console.log("Converted transactionId:", transactionId);
+    // console.log("Converted transactionId:", transactionId);
 
     // Validate existence of core member transaction (from core_membertransaction schema)
     const coreTransaction = await prisma.core_membertransaction.findUnique({
@@ -558,7 +558,7 @@ export const viewlogs = async (req, res) => {
       return res.status(404).json({ error: "Core member transaction not found." });
     }
 
-    console.log("Found core member transaction:", coreTransaction);
+    // console.log("Found core member transaction:", coreTransaction);
 
     // Fetch audit logs where the transaction_id matches the core member transaction id.
     const logs = await prisma.core_auditmembertransactions.findMany({
@@ -581,7 +581,7 @@ export const viewlogs = async (req, res) => {
       },
     });
 
-    console.log("Fetched logs:", logs);
+    // console.log("Fetched logs:", logs);
 
     // If no logs are found, return a 404.
     if (!logs || logs.length === 0) {
