@@ -364,13 +364,27 @@ export const getProfileAllDetails = async (req, res) => {
 };
 
 
-
 export const createUpdateRequest = async (req, res) => {
   try {
     const { memberId, formData } = req.body; // Assume memberId and formData are in the request body
 
     if (!memberId || !formData) {
       return res.status(400).json({ message: "Missing required data." });
+    }
+
+    // Check if there are any pending update requests for this member
+    const existingRequest = await prisma.core_informationupdate.findFirst({
+      where: {
+        member_id: memberId,
+        processed: false, // Only check for unprocessed requests
+      },
+    });
+
+    if (existingRequest) {
+      // If there is an existing unprocessed request, prevent the new submission
+      return res.status(400).json({
+        message: "There is already a pending update request for this member.",
+      });
     }
 
     // Create a new update request in the core_informationupdate table
@@ -394,6 +408,29 @@ export const createUpdateRequest = async (req, res) => {
   }
 };
 
+
+export const checkPendingRequest = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Check if there is any pending request for the user
+    const existingRequest = await prisma.core_informationupdate.findFirst({
+      where: {
+        member_id: userId,
+        processed: false, // Check for unprocessed requests
+      },
+    });
+
+    if (existingRequest) {
+      return res.status(200).json({ pending: true });
+    }
+
+    return res.status(200).json({ pending: false });
+  } catch (error) {
+    console.error("Error checking pending request:", error);
+    return res.status(500).json({ message: "Error checking pending request." });
+  }
+};
 
 
 
