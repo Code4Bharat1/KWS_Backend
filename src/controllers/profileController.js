@@ -559,6 +559,24 @@ export const approveUpdateRequest = async (req, res) => {
       formattedData.dob = formatDate(formattedData.dob); // Ensure ISO format
     }
 
+
+    if (formattedData.percentage_1) {
+      formattedData.percentage_1 = parseInt(formattedData.percentage_1, 10); // Convert to integer
+    }
+
+    if (formattedData.percentage_2) {
+      formattedData.percentage_2 = parseInt(formattedData.percentage_2, 10); // Convert to integer
+    }
+
+    if (formattedData.percentage_3) {
+      formattedData.percentage_3 = parseInt(formattedData.percentage_3, 10); // Convert to integer
+    }
+
+    if (formattedData.percentage_4) {
+      formattedData.percentage_4 = parseInt(formattedData.percentage_4, 10); // Convert to integer
+    }
+
+
     // Update the core_kwsmember table with the new data
     const updatedMember = await prisma.core_kwsmember.update({
       where: { user_id: updateRequest.member_id },
