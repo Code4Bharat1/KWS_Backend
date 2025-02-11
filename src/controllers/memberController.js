@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { isValid, format } from 'date-fns';
 const prisma = new PrismaClient();
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -19,25 +20,39 @@ export const getPendingApprovals = async (req, res) => {
     // Fetch users with membership status "pending" and order them by their application date
     const pendingApprovals = await prisma.core_kwsmember.findMany({
       where: {
-        membership_status: "pending", // Filter by membership_status
+        membership_status: "pending", 
       },
       orderBy: {
-        application_date: 'asc', // Order by application_date
+        application_date: 'desc', 
       },
     });
 
     // Format the application_date to 'dd-mm-yyyy' for each record
     const formattedPendingApprovals = pendingApprovals.map((approval) => {
-      const applicationDate = new Date(approval.application_date);
-      const day = applicationDate.getDate().toString().padStart(2, '0');  // Ensure day is 2 digits
-      const month = (applicationDate.getMonth() + 1).toString().padStart(2, '0'); // Month is 0-indexed
-      const year = applicationDate.getFullYear();
+      let applicationDate;
 
-      // Add formatted date to the approval object
-      return {
-        ...approval,
-        application_date: `${day}-${month}-${year}`, // formatted date
-      };
+      // Check if application_date is already a Date object or string
+      if (approval.application_date instanceof Date) {
+        applicationDate = approval.application_date; // If it's a Date object, use it directly
+      } else {
+        // If it's a string, parse it
+        applicationDate = new Date(approval.application_date);
+      }
+
+      // Check if the parsed date is valid
+      if (isValid(applicationDate)) {
+        const formattedDate = format(applicationDate, 'dd-MM-yyyy'); // Use date-fns to format the date
+        return {
+          ...approval,
+          application_date: formattedDate, // formatted date
+        };
+      } else {
+        // If the date is invalid, return a placeholder value
+        return {
+          ...approval,
+          application_date: 'Invalid Date', // Or return null if you prefer
+        };
+      }
     });
 
     res.status(200).json(formattedPendingApprovals); // Return the result as JSON
@@ -49,7 +64,6 @@ export const getPendingApprovals = async (req, res) => {
     });
   }
 };
-
 
 
 // update status
