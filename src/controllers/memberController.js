@@ -16,23 +16,41 @@ const __dirname = path.dirname(__filename);
 // pending hai
 export const getPendingApprovals = async (req, res) => {
   try {
-    // Fetch users with membership status "pending" from the core_kwsmember model
+    // Fetch users with membership status "pending" and order them by their application date
     const pendingApprovals = await prisma.core_kwsmember.findMany({
       where: {
         membership_status: "pending", // Filter by membership_status
       },
+      orderBy: {
+        application_date: 'asc', // Order by application_date
+      },
     });
-    res.status(200).json(pendingApprovals); // Return the result as JSON
+
+    // Format the application_date to 'dd-mm-yyyy' for each record
+    const formattedPendingApprovals = pendingApprovals.map((approval) => {
+      const applicationDate = new Date(approval.application_date);
+      const day = applicationDate.getDate().toString().padStart(2, '0');  // Ensure day is 2 digits
+      const month = (applicationDate.getMonth() + 1).toString().padStart(2, '0'); // Month is 0-indexed
+      const year = applicationDate.getFullYear();
+
+      // Add formatted date to the approval object
+      return {
+        ...approval,
+        application_date: `${day}-${month}-${year}`, // formatted date
+      };
+    });
+
+    res.status(200).json(formattedPendingApprovals); // Return the result as JSON
   } catch (error) {
     console.error("Error fetching pending approvals:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error fetching pending approvals.",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error fetching pending approvals.",
+      error: error.message,
+    });
   }
 };
+
+
 
 // update status
 BigInt.prototype.toJSON = function () {
