@@ -410,16 +410,19 @@ export const createUpdateRequest = async (req, res) => {
 
 
 export const checkPendingRequest = async (req, res) => {
-  const { userId } = req.params;
+  const { userId } = req.params; // Get userId from params
 
   try {
-    // Check if there is any pending request for the user
+  
+    // Check if there is any pending request for this user
     const existingRequest = await prisma.core_informationupdate.findFirst({
       where: {
-        member_id: userId,
-        processed: false, // Check for unprocessed requests
+        member_id: parseInt(userId), // Check against member_id (user_id) in core_informationupdate
+        processed: false, // Only look for unprocessed requests
       },
     });
+
+ 
 
     if (existingRequest) {
       return res.status(200).json({ pending: true });
@@ -431,7 +434,6 @@ export const checkPendingRequest = async (req, res) => {
     return res.status(500).json({ message: "Error checking pending request." });
   }
 };
-
 
 
 export const getPendingUpdateRequests = async (req, res) => {
@@ -525,6 +527,7 @@ export const getPendingUpdateRequests = async (req, res) => {
       return {
         ...request,
         username: user ? user.username : null,
+        user_id: request.core_kwsmember?.user_id,
         type_of_member: request.core_kwsmember?.type_of_member,  // Return type_of_member
         zone_member: request.core_kwsmember?.zone_member, 
         name: `${request.core_kwsmember?.first_name || ""} ${request.core_kwsmember?.last_name || ""}`,  
