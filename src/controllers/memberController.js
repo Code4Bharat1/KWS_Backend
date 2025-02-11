@@ -1,5 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { isValid, format } from 'date-fns';
+import { enGB } from 'date-fns/locale'; 
+
 const prisma = new PrismaClient();
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -31,7 +33,6 @@ export const getPendingApprovals = async (req, res) => {
     const formattedPendingApprovals = pendingApprovals.map((approval) => {
       let applicationDate;
 
-      // Check if application_date is already a Date object or string
       if (approval.application_date instanceof Date) {
         applicationDate = approval.application_date; // If it's a Date object, use it directly
       } else {
@@ -39,18 +40,16 @@ export const getPendingApprovals = async (req, res) => {
         applicationDate = new Date(approval.application_date);
       }
 
-      // Check if the parsed date is valid
       if (isValid(applicationDate)) {
-        const formattedDate = format(applicationDate, 'dd-MM-yyyy'); // Use date-fns to format the date
+        const formattedDate = format(applicationDate, 'dd-MM-yyyy', { locale: enGB }); // Explicitly set the locale
         return {
           ...approval,
-          application_date: formattedDate, // formatted date
+          application_date: formattedDate, 
         };
       } else {
-        // If the date is invalid, return a placeholder value
         return {
           ...approval,
-          application_date: 'Invalid Date', // Or return null if you prefer
+          application_date: 'Invalid Date', 
         };
       }
     });
@@ -64,7 +63,6 @@ export const getPendingApprovals = async (req, res) => {
     });
   }
 };
-
 
 // update status
 BigInt.prototype.toJSON = function () {
