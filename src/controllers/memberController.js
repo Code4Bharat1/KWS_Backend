@@ -30,30 +30,27 @@ export const getPendingApprovals = async (req, res) => {
 
     // Format the application_date to 'dd mm yyyy' for each record
     const formattedPendingApprovals = pendingApprovals.map((approval) => {
-      let applicationDate;
+      let applicationDateStr = approval.application_date;
 
-      // Ensure proper date parsing
-      if (typeof approval.application_date === "string") {
-        applicationDate = new Date(approval.application_date.replace(" ", "T")); // Fix for inconsistent date formats
-      } else {
-        applicationDate = new Date(approval.application_date);
+      // Ensure the date is a string before proceeding
+      if (typeof applicationDateStr !== "string") {
+        applicationDateStr = String(applicationDateStr);
       }
 
-      // Ensure date is valid before formatting
-      if (!isNaN(applicationDate.getTime())) {
-        const day = String(applicationDate.getDate()).padStart(2, "0"); // Ensure 2-digit day
-        const month = String(applicationDate.getMonth() + 1).padStart(2, "0"); // Ensure 2-digit month (Months are 0-based)
-        const year = applicationDate.getFullYear();
+      // Split the date string manually (assuming format is YYYY-MM-DD or YYYY-MM-DD HH:mm:ss)
+      const dateParts = applicationDateStr.split(" ")[0].split("-"); // Extract YYYY, MM, DD
 
+      if (dateParts.length === 3) {
+        const [year, month, day] = dateParts; // Extract year, month, day
         return {
           ...approval,
-          application_date: `${day} ${month} ${year}`, // Format: 'dd mm yyyy'
+          application_date: `${day} ${month} ${year}`, // Format as 'dd mm yyyy'
         };
       }
 
       return {
         ...approval,
-        application_date: "Invalid Date", // Handle invalid dates
+        application_date: "Invalid Date", // Handle incorrect format
       };
     });
 
