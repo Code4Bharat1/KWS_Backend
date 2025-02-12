@@ -28,49 +28,8 @@ export const getPendingApprovals = async (req, res) => {
       },
     });
 
-    // Format the application_date to 'dd mm yyyy hh:mm AM/PM' for each record
-    const formattedPendingApprovals = pendingApprovals.map((approval) => {
-      let applicationDateStr = approval.application_date;
-
-      // Ensure the date exists
-      if (!applicationDateStr) {
-        return { ...approval, application_date: "Invalid Date" };
-      }
-
-      let applicationDate;
-
-      if (typeof applicationDateStr === "string") {
-        // Convert to a proper ISO string (removes issues with `+05:30` timezone)
-        applicationDate = new Date(applicationDateStr);
-      } else {
-        applicationDate = new Date(applicationDateStr);
-      }
-
-      // Validate parsed date
-      if (!isNaN(applicationDate.getTime())) {
-        // Extract Date Components
-        const day = String(applicationDate.getUTCDate()).padStart(2, "0");
-        const month = String(applicationDate.getUTCMonth() + 1).padStart(2, "0"); // Months are 0-based
-        const year = applicationDate.getUTCFullYear();
-
-        // Extract Time Components
-        let hours = applicationDate.getUTCHours();
-        const minutes = String(applicationDate.getUTCMinutes()).padStart(2, "0");
-
-        // Convert 24-hour to 12-hour format with AM/PM
-        const amPm = hours >= 12 ? "PM" : "AM";
-        hours = hours % 12 || 12; // Convert '0' to '12' for 12-hour format
-
-        return {
-          ...approval,
-          application_date: `${day} ${month} ${year} ${hours}:${minutes} ${amPm}`, // Format as 'dd mm yyyy hh:mm AM/PM'
-        };
-      }
-
-      return { ...approval, application_date: "Invalid Date" };
-    });
-
-    res.status(200).json(formattedPendingApprovals); // Return the result as JSON
+    // Return the data as is, without formatting
+    res.status(200).json(pendingApprovals); // Return the result as JSON (Raw data from DB)
   } catch (error) {
     console.error("Error fetching pending approvals:", error);
     res.status(500).json({
@@ -79,6 +38,7 @@ export const getPendingApprovals = async (req, res) => {
     });
   }
 };
+
 
 
 
