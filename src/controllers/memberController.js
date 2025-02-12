@@ -28,27 +28,25 @@ export const getPendingApprovals = async (req, res) => {
       },
     });
 
-    // Format the application_date to '12 Oct 2004' for each record
+    // Format the application_date to 'dd mm yyyy' for each record
     const formattedPendingApprovals = pendingApprovals.map((approval) => {
       let applicationDate = new Date(approval.application_date);
 
       // Ensure date is valid before formatting
       if (!isNaN(applicationDate.getTime())) {
-        const formattedDate = applicationDate.toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        });
+        const day = String(applicationDate.getDate()).padStart(2, '0'); // Ensure 2-digit day
+        const month = String(applicationDate.getMonth() + 1).padStart(2, '0'); // Ensure 2-digit month (Months are 0-based)
+        const year = applicationDate.getFullYear();
 
         return {
           ...approval,
-          application_date: formattedDate, 
+          application_date: `${day} ${month} ${year}`, // Format: 'dd mm yyyy'
         };
       }
 
       return {
         ...approval,
-        application_date: approval.application_date, 
+        application_date: approval.application_date, // Return as is if invalid
       };
     });
 
@@ -61,6 +59,7 @@ export const getPendingApprovals = async (req, res) => {
     });
   }
 };
+
 
 
 // update status
