@@ -21,21 +21,28 @@ export const getPendingApprovals = async (req, res) => {
     // Fetch users with membership status "pending" and order them by their application date
     const pendingApprovals = await prisma.core_kwsmember.findMany({
       where: {
-        membership_status: "pending", 
+        membership_status: "pending",
       },
       orderBy: {
-        application_date: 'desc', 
+        application_date: "desc",
       },
     });
 
     // Format the application_date to 'dd mm yyyy' for each record
     const formattedPendingApprovals = pendingApprovals.map((approval) => {
-      let applicationDate = new Date(approval.application_date);
+      let applicationDate;
+
+      // Ensure proper date parsing
+      if (typeof approval.application_date === "string") {
+        applicationDate = new Date(approval.application_date.replace(" ", "T")); // Fix for inconsistent date formats
+      } else {
+        applicationDate = new Date(approval.application_date);
+      }
 
       // Ensure date is valid before formatting
       if (!isNaN(applicationDate.getTime())) {
-        const day = String(applicationDate.getDate()).padStart(2, '0'); // Ensure 2-digit day
-        const month = String(applicationDate.getMonth() + 1).padStart(2, '0'); // Ensure 2-digit month (Months are 0-based)
+        const day = String(applicationDate.getDate()).padStart(2, "0"); // Ensure 2-digit day
+        const month = String(applicationDate.getMonth() + 1).padStart(2, "0"); // Ensure 2-digit month (Months are 0-based)
         const year = applicationDate.getFullYear();
 
         return {
@@ -46,7 +53,7 @@ export const getPendingApprovals = async (req, res) => {
 
       return {
         ...approval,
-        application_date: approval.application_date, // Return as is if invalid
+        application_date: "Invalid Date", // Handle invalid dates
       };
     });
 
