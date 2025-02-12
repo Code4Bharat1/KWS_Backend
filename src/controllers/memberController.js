@@ -30,26 +30,28 @@ export const getPendingApprovals = async (req, res) => {
 
     // Format the application_date to 'dd mm yyyy' for each record
     const formattedPendingApprovals = pendingApprovals.map((approval) => {
-      let applicationDate = approval.application_date;
+      let applicationDateStr = approval.application_date;
 
-      // Ensure proper handling of different date formats
-      if (!applicationDate) {
+      // Ensure the date exists
+      if (!applicationDateStr) {
         return { ...approval, application_date: "Invalid Date" };
       }
 
-      // Convert to Date object if necessary
-      if (typeof applicationDate === "string") {
-        applicationDate = applicationDate.replace(" ", "T"); // Fix for inconsistent date formats
-        applicationDate = new Date(applicationDate);
+      let applicationDate;
+
+      if (typeof applicationDateStr === "string") {
+        // Convert to a proper ISO string (removes issues with `+05:30` timezone)
+        applicationDate = new Date(applicationDateStr);
       } else {
-        applicationDate = new Date(applicationDate);
+        applicationDate = new Date(applicationDateStr);
       }
 
-      // Ensure the date is valid
+      // Validate parsed date
       if (!isNaN(applicationDate.getTime())) {
-        const day = String(applicationDate.getDate()).padStart(2, "0");
-        const month = String(applicationDate.getMonth() + 1).padStart(2, "0");
-        const year = applicationDate.getFullYear();
+        // Convert to UTC format to avoid timezone inconsistencies
+        const day = String(applicationDate.getUTCDate()).padStart(2, "0");
+        const month = String(applicationDate.getUTCMonth() + 1).padStart(2, "0"); // Months are 0-based
+        const year = applicationDate.getUTCFullYear();
 
         return {
           ...approval,
