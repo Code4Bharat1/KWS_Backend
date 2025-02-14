@@ -323,7 +323,7 @@ export const getTransactions = async (req, res) => {
   try {
     // Extract filters from query parameters
     const { kwsId, category, fromDate, toDate } = req.query;
-    console.log("Received category:", category);
+    // console.log("Received category:", category);
 
 
     // Set the default `toDate` to today's date
