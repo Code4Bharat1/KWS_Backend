@@ -323,6 +323,8 @@ export const getTransactions = async (req, res) => {
   try {
     // Extract filters from query parameters
     const { kwsId, category, fromDate, toDate } = req.query;
+    console.log("Received category:", category);
+
 
     // Set the default `toDate` to today's date
     const currentDate = new Date();
@@ -336,8 +338,12 @@ export const getTransactions = async (req, res) => {
       };
     }
     if (category) {
-      whereClause.category = category;
+      whereClause.category = {
+        contains: category.toLowerCase(), // Convert input to lowercase
+        mode: "insensitive", // Prisma's built-in case-insensitive filter
+      };
     }
+    
     if (fromDate || toDate) {
       whereClause.date = {
         ...(fromDate && { gte: new Date(fromDate) }),
@@ -441,19 +447,13 @@ export const getTransactionofIndividual = async (req, res) => {
     const formatDate = (date) => {
       if (!date) return "Not Available";
 
-      // Print raw date to the console for debugging
-      // console.log("Raw date:", date);
 
-      // Try to parse the date using Date.parse() or the Date constructor
       const parsedDate = new Date(date);
 
-      // Print parsed date object to see what we get
-      // console.log("Parsed Date:", parsedDate);
-
-      // Check if the parsed date is invalid
+   
       if (isNaN(parsedDate)) {
         console.error(`Invalid date format: ${date}`);
-        return "Invalid Date"; // Return 'Invalid Date' for invalid date
+        return "Invalid Date"; 
       }
 
       // Manually format the date to "YYYY-MM-DD" (ISO format without time)
