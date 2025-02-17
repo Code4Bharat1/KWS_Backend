@@ -222,7 +222,12 @@ export const updateApprovalStatus = async (req, res) => {
 
 export const getAllMembers = async (req, res) => {
   const formatDate = (date) => {
-    if (!date) return null;
+    if (!date) return "-";
+    
+    const formattedDate = new Date(date).toISOString().split("T")[0]; 
+
+    if (formattedDate === "1800-01-01") return "-";
+
     return new Intl.DateTimeFormat("en-GB", {
       day: "2-digit",
       month: "short",
