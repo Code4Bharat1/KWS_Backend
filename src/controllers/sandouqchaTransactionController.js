@@ -9,16 +9,14 @@ import * as XLSX from "xlsx"
 
 export const getTransactionList = async (req, res) => {
   try {
-    // Parse recentCount from query parameters
     const recentCount = parseInt(req.query.recentCount);
 
-    // Build the findMany options
     const findManyOptions = {
       include: {
         core_sandouqchaboxholder: {
           select: {
-            id: true, // Ensure the `id` is fetched for validation
-            number: true, // Fetch the box number
+            id: true, 
+            number: true, 
             core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember: {
               select: {
                 first_name: true,
@@ -44,6 +42,7 @@ export const getTransactionList = async (req, res) => {
           select: {
             first_name: true,
             last_name: true,
+            kwsid:true,
           },
         },
       },
@@ -52,7 +51,6 @@ export const getTransactionList = async (req, res) => {
       },
     };
 
-    // If recentCount is provided and valid, add the take parameter
     if (!isNaN(recentCount) && recentCount > 0) {
       findManyOptions.take = recentCount;
     }
@@ -102,7 +100,7 @@ export const getTransactionList = async (req, res) => {
         date: transaction.date.toISOString().split("T")[0], // Format date
         boxNumber: transaction.core_sandouqchaboxholder?.number || "Unknown", // Display the box number
         collectedBy: transaction.core_kwsmember
-          ? `${transaction.core_kwsmember.first_name} ${transaction.core_kwsmember.last_name}`
+          ? `${transaction.core_kwsmember.first_name} ${transaction.core_kwsmember.last_name} - ${transaction.core_kwsmember.kwsid}`
           : "Unknown",
         holderName,
         zone,
@@ -159,7 +157,7 @@ export const addTransaction = async (req, res) => {
         : null;
 
       // Validate required fields
-      if (!transactionId || !date || !boxId || !collectedByKwsid || !committedId) {
+      if (  !date || !boxId || !collectedByKwsid || !committedId) {
         return res.status(400).json({ error: "Transaction ID, Date, boxId, collectedByKwsid, and committedId are required." });
       }
 
@@ -722,7 +720,7 @@ export const logs = async (req, res) => {
     // Fetch logs based on the transaction_id
     const logs = await prisma.core_auditsandouqchatransaction.findMany({
       where: {
-        transaction_id: id, // Use 'transaction_id' to filter logs
+        transaction_id: id, 
       },
       include: {
         core_kwsmember_core_auditsandouqchatransaction_collected_by_idTocore_kwsmember: {

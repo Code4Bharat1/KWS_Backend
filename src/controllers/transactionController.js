@@ -98,9 +98,7 @@ export const addTransactions = async (req, res) => {
       },
     });
 
-    // ==============================
-    // LOG CREATION
-    // ==============================
+   
     await prisma.core_auditmembertransactions.create({
       data: {
         category: newTransaction.category,
@@ -373,6 +371,7 @@ export const getTransactions = async (req, res) => {
             user_id: true,
             kwsid: true,
             first_name: true,
+            last_name:true,
             zone_member: true,
           },
         },
@@ -391,7 +390,7 @@ export const getTransactions = async (req, res) => {
       KWSID: transaction.core_kwsmember?.kwsid || "N/A",
       Date: formatDate(transaction.date), // Format the date
       Category: transaction.category,
-      For: `${transaction.core_kwsmember?.first_name || "Unknown"}-${
+      For: `${transaction.core_kwsmember?.first_name || ""} ${transaction.core_kwsmember?.last_name || ""}-${
         transaction.core_kwsmember?.kwsid || "N/A"
       }`, // Format: first_name-kwsid
       Remarks: transaction.remarks || "No remarks available",

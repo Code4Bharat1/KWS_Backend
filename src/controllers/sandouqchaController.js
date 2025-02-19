@@ -58,7 +58,7 @@ export const getBoxList = async (req, res) => {
       // Check if the holder is a member
       if (box.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember) {
         const member = box.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember;
-        holderName = `${member.first_name} ${member.last_name} - ${member.zone_member || "No Zone"}`;
+        holderName = `${member.first_name} ${member.last_name} -${member.kwsid}- ${member.zone_member || "No Zone"}`;
         holderContact =  member.kuwait_contact || "No Contact";
       }
       // Check if the holder is a non-member
