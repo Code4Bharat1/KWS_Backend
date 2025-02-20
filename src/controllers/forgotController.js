@@ -5,7 +5,7 @@ import nodemailer from "nodemailer"; // For sending emails
 
 const prisma = new PrismaClient();
 
-// In-memory storage for reset tokens (not recommended for production)
+
 let resetTokens = {};
 
 export const requestPasswordReset = async (req, res) => {
@@ -16,16 +16,25 @@ export const requestPasswordReset = async (req, res) => {
   }
 
   try {
-    // Fetch the user by username
+    // Fetch the user and the associated core_kwsmember
     const user = await prisma.users_user.findUnique({
       where: {
         username: username,
       },
+      include: {
+        core_kwsmember: {
+          select: {
+            email: true, // Fetch email from core_kwsmember
+          },
+        },
+      },
     });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
+    if (!user || !user.core_kwsmember?.email) {
+      return res.status(404).json({ message: "Core KWS member email not found." });
     }
+
+    const recipientEmail = user.core_kwsmember.email; // Get the core_kwsmember's email
 
     // Generate a reset token
     const resetToken = crypto.randomBytes(32).toString("hex"); // Generate a unique token
@@ -46,7 +55,7 @@ export const requestPasswordReset = async (req, res) => {
     // Prepare the reset email with a reset token (no frontend URL)
     const mailOptions = {
       from: "no-reply@example.com", // Sender address
-      to: user.email, // Recipient address
+      to: recipientEmail, // Send email to the core_kwsmember's email
       subject: "Password Reset Request", // Subject line
       text: `You requested a password reset. Please use the token below to reset your password:\n\nToken: ${resetToken}`,
       html: `<p>You requested a password reset. Please use the token below to reset your password:</p><p><b>Token: ${resetToken}</b></p>`,
@@ -55,7 +64,7 @@ export const requestPasswordReset = async (req, res) => {
     // Send email with reset token
     await transporter.sendMail(mailOptions);
 
-    return res.status(200).json({ message: "Password reset token sent to your email." });
+    return res.status(200).json({ message: "Password reset token sent to Core KWS member's email." });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "An error occurred while processing your request." });
