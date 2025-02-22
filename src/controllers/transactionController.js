@@ -510,7 +510,7 @@ export const getTransactionofIndividual = async (req, res) => {
 
     const approvedBy = transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember
       ? `${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.kwsid}`
-      : "Not Approved";
+      : "";
 
     // Function to check and format the date
     const formatDate = (date) => {
