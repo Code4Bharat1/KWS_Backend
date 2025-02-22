@@ -62,7 +62,6 @@ export const registerUser = async (req, res) => {
       nominations = [],
       requested_membership,
     } = req.body;
-    // console.log("All i am geting",req.body);
     
     // Basic validation for required fields...
     if (!email || !password || !civil_id || !first_name || !gender) {

@@ -68,9 +68,7 @@ export const getProfile = async (req, res) => {
         
     };
 
-    // console.log(user.core_kwsmember.profile_picture);
-    // console.log("Constructed Response:", response);
-
+  
     return res.status(200).json({ user: response });
   } catch (error) {
     console.error("Error fetching user profile:", error);

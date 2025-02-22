@@ -49,9 +49,7 @@ app.use('/uploads/transaction-slips', express.static(path.join(__dirname, '../up
 
 // Debug middleware to inspect requests
 app.use((req, res, next) => {
-    // console.log(`${req.method} ${req.url}`);
-    // console.log('Headers:', req.headers);
-    // console.log('Body:', req.body);
+    
     next();
 });
 

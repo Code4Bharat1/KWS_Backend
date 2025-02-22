@@ -15,8 +15,8 @@ export const getTransactionList = async (req, res) => {
       include: {
         core_sandouqchaboxholder: {
           select: {
-            id: true, 
-            number: true, 
+            id: true,
+            number: true,
             core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember: {
               select: {
                 first_name: true,
@@ -42,7 +42,14 @@ export const getTransactionList = async (req, res) => {
           select: {
             first_name: true,
             last_name: true,
-            kwsid:true,
+            kwsid: true,
+          },
+        },
+        core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember: {
+          select: {
+            first_name: true,
+            last_name: true,
+            kwsid: true,
           },
         },
       },
@@ -74,7 +81,7 @@ export const getTransactionList = async (req, res) => {
       const zone = holderDetails?.zone_member;
 
       const holderContact =
-      holderDetails?.kuwait_contact ||
+        holderDetails?.kuwait_contact ||
         holderDetails?.indian_contact_no_1 ||
         holderDetails?.indian_contact_no_2 ||
         "No Contact";
@@ -85,34 +92,37 @@ export const getTransactionList = async (req, res) => {
         (transaction.note_10 || 0) * 10 +
         (transaction.note_5 || 0) * 5 +
         (transaction.note_1 || 0) * 1 +
-        (transaction.note_0_5 || 0) * 0.5 + // 0.5 KD = 500 fils
-        (transaction.note_0_25 || 0) * 0.25 + // 0.25 KD = 250 fils
-        (transaction.coin_100 || 0) * 0.1 + // 100 fils = 0.1 KD
-        (transaction.coin_50 || 0) * 0.05 + // 50 fils = 0.05 KD
-        (transaction.coin_20 || 0) * 0.02 + // 20 fils = 0.02 KD
-        (transaction.coin_10 || 0) * 0.01 + // 10 fils = 0.01 KD
-        (transaction.coin_5 || 0) * 0.005; // 5 fils = 0.005 KD
+        (transaction.note_0_5 || 0) * 0.5 +
+        (transaction.note_0_25 || 0) * 0.25 +
+        (transaction.coin_100 || 0) * 0.1 +
+        (transaction.coin_50 || 0) * 0.05 +
+        (transaction.coin_20 || 0) * 0.02 +
+        (transaction.coin_10 || 0) * 0.01 +
+        (transaction.coin_5 || 0) * 0.005;
 
       return {
         id: transaction.id,
         transactionId: transaction.TID,
         status: transaction.status,
-        date: transaction.date.toISOString().split("T")[0], // Format date
-        boxNumber: transaction.core_sandouqchaboxholder?.number || "Unknown", // Display the box number
+        date: transaction.date.toISOString().split("T")[0],
+        boxNumber: transaction.core_sandouqchaboxholder?.number || "Unknown",
         collectedBy: transaction.core_kwsmember
           ? `${transaction.core_kwsmember.first_name} ${transaction.core_kwsmember.last_name} - ${transaction.core_kwsmember.kwsid}`
           : "Unknown",
+        approvedByKwsid: transaction.core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember
+          ? `${transaction.core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember.first_name} ${transaction.core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember.last_name} - ${transaction.core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember.kwsid}`
+          : "Not Approved",
         holderName,
         zone,
         holderContact,
-        total: parseFloat(total.toFixed(3)), // Round total to 3 decimal places
+        total: parseFloat(total.toFixed(3)),
         transactionSlip: transaction.slip || null,
       };
     });
 
     res.status(200).json({
       transactions: transactionsWithDetails,
-      totalTransactions: totalTransactions, // Add total count of transactions
+      totalTransactions,
     });
   } catch (error) {
     console.error("Error fetching transaction list:", error);
@@ -266,20 +276,14 @@ export const viewTransaction = async (req, res) => {
       return res.status(400).json({ error: "Transaction ID is required." });
     }
 
-    // Fetch the transaction details.
-    // Note: We assume the primary key is of type BigInt,
-    // so we convert the id parameter from string to BigInt.
     const transaction = await prisma.core_sandouqchatransaction.findUnique({
       where: {
         id: BigInt(id),
       },
       include: {
-        // Include associated box-holder data
         core_sandouqchaboxholder: {
           select: {
-            number: true, // This will be used for the box number
-            // If you have holder details (for non-members or members linked to the box holder),
-            // you can select them as needed. For example:
+            number: true, // Box number
             core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember: {
               select: {
                 first_name: true,
@@ -296,8 +300,14 @@ export const viewTransaction = async (req, res) => {
             },
           },
         },
-        // Include the member who collected the transaction
         core_kwsmember: {
+          select: {
+            first_name: true,
+            last_name: true,
+            kwsid: true,
+          },
+        },
+        core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember: {
           select: {
             first_name: true,
             last_name: true,
@@ -311,28 +321,30 @@ export const viewTransaction = async (req, res) => {
       return res.status(404).json({ error: "Transaction not found." });
     }
 
-    // Construct 'collectedBy' using the core_kwsmember details.
-    // If core_kwsmember is not available, return "Unknown".
+    // Collected By KWSID
     const collectedBy = transaction.core_kwsmember
-      ? ` ${transaction.core_kwsmember.kwsid}`
+      ? `${transaction.core_kwsmember.kwsid}`
       : "Unknown";
 
-    // Construct 'holderName'. We attempt to get holder info from box holder.
-    // Adjust this according to your actual relations. Here we consider two possibilities:
-    // 1. If the box holder has a linked member from core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember.
-    // 2. Otherwise, if it has core_nonkwsmember details.
+    // Approved By KWSID
+    const approvedBy = transaction.core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember
+      ? `${transaction.core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember.kwsid}`
+      : "Not Approved";
+
+    // Holder Name (KWS or Non-KWS)
     let holderName = "Unknown";
     if (transaction.core_sandouqchaboxholder) {
-      if (transaction.core_sandouqchaboxholder.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember) {
-        const memberData = transaction.core_sandouqchaboxholder.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember;
+      const memberData = transaction.core_sandouqchaboxholder.core_kwsmember_core_sandouqchaboxholder_member_idTocore_kwsmember;
+      const nonMemberData = transaction.core_sandouqchaboxholder.core_nonkwsmember;
+
+      if (memberData) {
         holderName = `${memberData.first_name} ${memberData.last_name} - ${memberData.kwsid}`;
-      } else if (transaction.core_sandouqchaboxholder.core_nonkwsmember) {
-        const nonMemberData = transaction.core_sandouqchaboxholder.core_nonkwsmember;
+      } else if (nonMemberData) {
         holderName = `${nonMemberData.first_name} ${nonMemberData.last_name}`;
       }
     }
 
-    // Compute the total from notes and coins
+    // Calculate Total
     const total = parseFloat(
       (
         (transaction.note_20 || 0) * 20 +
@@ -349,14 +361,15 @@ export const viewTransaction = async (req, res) => {
       ).toFixed(3)
     );
 
+    // Prepare Response
     const response = {
       id: transaction.id,
-      transactionId: transaction.TID, // Transaction ID
-      date: transaction.date.toISOString().split("T")[0], // Format date as YYYY-MM-DD
-      boxNumber: transaction.core_sandouqchaboxholder?.number || "",
+      transactionId: transaction.TID,
+      date: transaction.date.toISOString().split("T")[0], // Format date
+      boxNumber: transaction.core_sandouqchaboxholder?.number || "Unknown",
       collectedByKwsid: collectedBy,
+      approvedByKwsid: approvedBy,
       holderName: holderName,
-      // If you need to include the file URL for the transaction slip:
       transactionSlipUrl: transaction.slip || "",
       notes: {
         note_20: transaction.note_20,
@@ -403,6 +416,7 @@ export const editTransaction = async (req, res) => {
         date,
         boxId, 
         collectedByKwsid,
+        approvedByKwsid,
         note_20,
         note_10,
         note_5,
@@ -417,11 +431,7 @@ export const editTransaction = async (req, res) => {
         status,
       } = req.body;
 
-      // Log the collectedByKwsid for debugging:
-      // console.log("Received collectedByKwsid:", collectedByKwsid);
 
-      // If a new transaction slip file is uploaded, build its URL;
-      // if not, leave the field unchanged.
       const transactionSlipUrl = req.files?.transactionSlip
         ? `/uploads/transaction-slips/${req.files.transactionSlip[0].filename}`
         : undefined; // undefined means "no change" to the field
@@ -439,6 +449,17 @@ export const editTransaction = async (req, res) => {
         return res.status(400).json({ error: "Invalid collectedByKwsid." });
       }
 
+
+      let approve = null;
+      if (approvedByKwsid) {
+        approve = await prisma.core_kwsmember.findFirst({
+          where: { kwsid: approvedByKwsid.trim() },
+        });
+        if (!approve) {
+          return res.status(400).json({ error: "Invalid approvedByKwsid." });
+        }
+      }
+
       // Convert boxId to a number and check if the box exists
       const boxIdNumber = parseInt(boxId, 10);
       const boxHolder = await prisma.core_sandouqchaboxholder.findUnique({
@@ -448,11 +469,10 @@ export const editTransaction = async (req, res) => {
         return res.status(400).json({ error: "Invalid box number." });
       }
 
-      // Prepare update data with proper type conversions
       const updateData = {
         date: new Date(date),
         box_id: boxHolder.id,
-        collected_by_id: member.user_id, // Use member.user_id as done in addTransaction
+        collected_by_id: member.user_id,
         note_20: parseInt(note_20, 10) || 0,
         note_10: parseInt(note_10, 10) || 0,
         note_5: parseInt(note_5, 10) || 0,
@@ -466,7 +486,9 @@ export const editTransaction = async (req, res) => {
         coin_5: parseInt(coin_5, 10) || 0,
         status: status || "pending", // Update the status (default "pending" if not provided)
       };
-
+      if (approvedByKwsid) {
+        updateData.approved_by_id = approve?.user_id;
+      }
       // Only update the transaction_slip field if a new file was uploaded.
       if (transactionSlipUrl !== undefined) {
         updateData.slip = transactionSlipUrl;
@@ -474,7 +496,7 @@ export const editTransaction = async (req, res) => {
 
       // Update the transaction in the database
       const updatedTransaction = await prisma.core_sandouqchatransaction.update({
-        where: { id },
+        where: { id: BigInt(id) },
         data: updateData,
       });
 
@@ -649,7 +671,6 @@ export const bulkTransaction = async (req, res) => {
           }
         });
 
-        // console.log("Searching for member with kwsid:", collectedByKwsid);
 
         if (!member) {
           errors.push({ transactionId, message: `Invalid collectedByKwsid for transaction: ${collectedByKwsid}` });
