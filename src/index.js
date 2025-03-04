@@ -21,7 +21,7 @@ import raffleRoutes from "./routes/raffle.route.js";
 dotenv.config();
 const app = express();
 
-const allowedOrigins = ["https://portal.kwskwt.com"];
+const allowedOrigins = ["https://portal.kwskwt.com/"];
 
 app.use(
   cors({
