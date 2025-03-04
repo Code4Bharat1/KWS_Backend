@@ -21,19 +21,26 @@ import raffleRoutes from "./routes/raffle.route.js";
 dotenv.config();
 const app = express();
 
+const allowedOrigins = ["https://portal.kwskwt.com"];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true, // Allow cookies if you're using sessions or JWT
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 // Resolve the directory name using `import.meta.url`
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename); // This will give you the current directory
-
-// Enable CORS for frontend connection
-app.use(
-  cors({
-    origin: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
 
 // Parse JSON payloads
 app.use(express.json());
