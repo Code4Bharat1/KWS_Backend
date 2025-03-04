@@ -1,7 +1,6 @@
-
 import { PrismaClient } from "@prisma/client";
-import path from 'path';
-import fs from 'fs';
+import path from "path";
+import fs from "fs";
 import { log } from "console";
 const prisma = new PrismaClient();
 
@@ -36,8 +35,8 @@ export const getProfile = async (req, res) => {
             last_name: true,
             type_of_member: true,
             profile_picture: true,
-            card_printed_date:true,
-            card_expiry_date:true,
+            card_printed_date: true,
+            card_expiry_date: true,
           },
         },
       },
@@ -46,8 +45,6 @@ export const getProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: "User not found." });
     }
-
-
 
     const response = {
       username: user.username,
@@ -58,26 +55,22 @@ export const getProfile = async (req, res) => {
             lastName: user.core_kwsmember.last_name,
             typeOfMember: user.core_kwsmember.type_of_member,
             cardPrinted: formatDate(user.core_kwsmember.card_printed_date),
-            cardExpiry:formatDate(user.core_kwsmember.card_expiry_date),
+            cardExpiry: formatDate(user.core_kwsmember.card_expiry_date),
             profilePicture: user.core_kwsmember.profile_picture
               ? `https://api.kwskwt.com/${user.core_kwsmember.profile_picture}`
               : null,
-              
           }
         : null,
-        
     };
 
-  
     return res.status(200).json({ user: response });
   } catch (error) {
     console.error("Error fetching user profile:", error);
-    return res.status(500).json({ error: "An error occurred while fetching the user profile." });
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching the user profile." });
   }
 };
-
-
-
 
 export const editProfile = async (req, res) => {
   const { user_id } = req.params;
@@ -94,29 +87,54 @@ export const editProfile = async (req, res) => {
       return res.status(400).json({ error: "User ID must be a valid number." });
     }
 
-    const { profile_picture, form_scanned, application_date,membership_status,kwsid,  dob, ...otherFields } = req.body;
+    const {
+      profile_picture,
+      form_scanned,
+      application_date,
+      membership_status,
+      kwsid,
+      dob,
+      ...otherFields
+    } = req.body;
     const updateData = { ...otherFields };
 
-    // Validate and parse dob (date of birth)
+    const existingUser = await prisma.core_kwsmember.findUnique({
+      where: { user_id: parsedUserId },
+      select: { civil_id: true },
+    });
+
+    if (updateData.civil_id && existingUser.civil_id === updateData.civil_id) {
+      delete updateData.civil_id; // Prevent updating the same civil_id
+    } else if (updateData.civil_id) {
+      const duplicateUser = await prisma.core_kwsmember.findFirst({
+        where: { civil_id: updateData.civil_id },
+      });
+      if (duplicateUser) {
+        return res.status(400).json({ error: "Civil ID already exists." });
+      }
+    }
+
     if (dob) {
       const parsedDob = new Date(dob);
       if (isNaN(parsedDob)) {
-        return res.status(400).json({ error: "Invalid dob format. Expected ISO-8601 DateTime." });
+        return res
+          .status(400)
+          .json({ error: "Invalid dob format. Expected ISO-8601 DateTime." });
       }
-      updateData.dob = parsedDob.toISOString(); // Ensure ISO-8601 DateTime format
+      updateData.dob = parsedDob.toISOString();
     }
 
-    // Validate and parse application_date
     if (application_date) {
       const parsedDate = new Date(application_date);
       if (isNaN(parsedDate)) {
-        return res.status(400).json({ error: "Invalid application_date format. Expected ISO-8601 DateTime." });
+        return res.status(400).json({
+          error: "Invalid application_date format. Expected ISO-8601 DateTime.",
+        });
       }
-      updateData.application_date = parsedDate; // Valid ISO-8601 DateTime
+      updateData.application_date = parsedDate;
     }
 
-    // Handle profile_picture upload
-    if (req.files && req.files.profile_picture && req.files.profile_picture.length > 0) {
+    if (req.files?.profile_picture?.length > 0) {
       const profilePic = req.files.profile_picture[0];
       const uploadDir = path.resolve("uploads/profile-pictures");
       if (!fs.existsSync(uploadDir)) {
@@ -127,38 +145,41 @@ export const editProfile = async (req, res) => {
       updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
 
-
     if (updateData.card_expiry_date) {
       const parsedExpiryDate = new Date(updateData.card_expiry_date);
       if (isNaN(parsedExpiryDate)) {
-        return res.status(400).json({ error: "Invalid card_expiry_date format. Expected ISO-8601 DateTime." });
+        return res
+          .status(400)
+          .json({ error: "Invalid card_expiry_date format." });
       }
-      updateData.card_expiry_date = parsedExpiryDate.toISOString(); // Ensure ISO-8601 DateTime format
+      updateData.card_expiry_date = parsedExpiryDate.toISOString();
     }
-    
-    // Validate and parse card_printed_date (if applicable)
+
     if (updateData.card_printed_date) {
       const parsedPrintedDate = new Date(updateData.card_printed_date);
       if (isNaN(parsedPrintedDate)) {
-        return res.status(400).json({ error: "Invalid card_printed_date format. Expected ISO-8601 DateTime." });
+        return res
+          .status(400)
+          .json({ error: "Invalid card_printed_date format." });
       }
-      updateData.card_printed_date = parsedPrintedDate.toISOString(); // Ensure ISO-8601 DateTime format
+      updateData.card_printed_date = parsedPrintedDate.toISOString();
     }
 
-    
-    const percentageFields = ['percentage_1', 'percentage_2', 'percentage_3', 'percentage_4'];
-percentageFields.forEach((field) => {
-  if (updateData[field]) {
-    const parsedValue = parseInt(updateData[field], 10);
-    if (isNaN(parsedValue)) {
-      return res.status(400).json({ error: `${field} must be a valid integer.` });
-    }
-    updateData[field] = parsedValue; // Assign the parsed integer back
-  }
-});
+    ["percentage_1", "percentage_2", "percentage_3", "percentage_4"].forEach(
+      (field) => {
+        if (updateData[field]) {
+          const parsedValue = parseInt(updateData[field], 10);
+          if (isNaN(parsedValue)) {
+            return res
+              .status(400)
+              .json({ error: `${field} must be a valid integer.` });
+          }
+          updateData[field] = parsedValue;
+        }
+      }
+    );
 
-    // Handle form_scanned upload
-    if (req.files && req.files.form_scanned && req.files.form_scanned.length > 0) {
+    if (req.files?.form_scanned?.length > 0) {
       const scannedForm = req.files.form_scanned[0];
       const uploadDir = path.resolve("uploads/form-scanned");
       if (!fs.existsSync(uploadDir)) {
@@ -169,7 +190,6 @@ percentageFields.forEach((field) => {
       updateData.form_scanned = `uploads/form-scanned/${scannedForm.filename}`;
     }
 
-
     let isActiveStatus = null;
     if (membership_status) {
       if (membership_status.toLowerCase() === "inactive") {
@@ -177,16 +197,14 @@ percentageFields.forEach((field) => {
       } else if (membership_status.toLowerCase() === "approved") {
         isActiveStatus = true;
       }
-      updateData.membership_status = membership_status; // Ensure membership_status gets updated
+      updateData.membership_status = membership_status;
     }
 
     const [updatedUser] = await prisma.$transaction([
       prisma.core_kwsmember.update({
         where: { user_id: parsedUserId },
-        data: { ...updateData , kwsid:kwsid },
+        data: { ...updateData, kwsid: kwsid },
       }),
-
-      // ✅ Update `users_user` username if `kwsid` is present
       kwsid
         ? prisma.users_user.update({
             where: { id: parsedUserId },
@@ -198,20 +216,23 @@ percentageFields.forEach((field) => {
             where: { id: parsedUserId },
             data: { is_active: isActiveStatus },
           })
-        : Promise.resolve(), 
+        : Promise.resolve(),
     ]);
 
-
-    return res.status(200).json({ message: "User profile updated successfully", user: updatedUser });
+    return res.status(200).json({
+      message: "User profile updated successfully",
+      user: updatedUser,
+    });
   } catch (error) {
     console.error("Error updating user profile:", error);
-    return res.status(500).json({ error: "An error occurred while updating the user profile." });
+    if (error.code === "P2002" && error.meta?.target.includes("civil_id")) {
+      return res.status(400).json({ error: "Civil ID already exists." });
+    }
+    return res
+      .status(500)
+      .json({ error: "An error occurred while updating the user profile." });
   }
 };
-
-
-
-
 
 export const getProfileAllDetails = async (req, res) => {
   const { user_id } = req.params;
@@ -246,8 +267,8 @@ export const getProfileAllDetails = async (req, res) => {
         type_of_member: true,
         profile_picture: true,
         dob: true,
-        type_of_member:true,
-        card_expiry_date:true,
+        type_of_member: true,
+        card_expiry_date: true,
         gender: true,
         blood_group: true,
         education_qualification: true,
@@ -311,12 +332,14 @@ export const getProfileAllDetails = async (req, res) => {
         zone_member: true,
         follow_up_member: true,
         office_comments: true,
-        membership_status:true,
+        membership_status: true,
       },
     });
 
     if (!coreKwsMember) {
-      return res.status(404).json({ error: "No record found with the provided User ID." });
+      return res
+        .status(404)
+        .json({ error: "No record found with the provided User ID." });
     }
 
     // Format date fields
@@ -328,7 +351,9 @@ export const getProfileAllDetails = async (req, res) => {
 
     coreKwsMember.dob = formatDate(coreKwsMember.dob);
     coreKwsMember.application_date = formatDate(coreKwsMember.application_date);
-    coreKwsMember.card_printed_date = formatDate(coreKwsMember.card_printed_date);
+    coreKwsMember.card_printed_date = formatDate(
+      coreKwsMember.card_printed_date
+    );
     coreKwsMember.card_expiry_date = formatDate(coreKwsMember.card_expiry_date);
 
     const BASE_URL = "https://api.kwskwt.com"; // Base URL of your production server
@@ -337,30 +362,41 @@ export const getProfileAllDetails = async (req, res) => {
     coreKwsMember.profile_picture = coreKwsMember.profile_picture
       ? coreKwsMember.profile_picture.startsWith("http")
         ? coreKwsMember.profile_picture.includes("localhost")
-          ? coreKwsMember.profile_picture.replace("http://localhost:5786", BASE_URL) // Remove localhost and add BASE_URL
+          ? coreKwsMember.profile_picture.replace(
+              "http://localhost:5786",
+              BASE_URL
+            ) // Remove localhost and add BASE_URL
           : coreKwsMember.profile_picture
-        : `${BASE_URL}/${coreKwsMember.profile_picture.startsWith("") ? "" : ""}${coreKwsMember.profile_picture}` // If it's a relative URL, prepend BASE_URL with a slash
+        : `${BASE_URL}/${
+            coreKwsMember.profile_picture.startsWith("") ? "" : ""
+          }${coreKwsMember.profile_picture}` // If it's a relative URL, prepend BASE_URL with a slash
       : null;
-    
+
     // Ensure the form_scanned URL is correctly formed
     coreKwsMember.form_scanned = coreKwsMember.form_scanned
       ? coreKwsMember.form_scanned.startsWith("http")
         ? coreKwsMember.form_scanned.includes("localhost")
-          ? coreKwsMember.form_scanned.replace("http://localhost:5786", BASE_URL) // Remove localhost and add BASE_URL
+          ? coreKwsMember.form_scanned.replace(
+              "http://localhost:5786",
+              BASE_URL
+            ) // Remove localhost and add BASE_URL
           : coreKwsMember.form_scanned
-        : `${BASE_URL}/${coreKwsMember.form_scanned.startsWith("") ? "" : ""}${coreKwsMember.form_scanned}` // If it's a relative URL, prepend BASE_URL with a slash
+        : `${BASE_URL}/${coreKwsMember.form_scanned.startsWith("") ? "" : ""}${
+            coreKwsMember.form_scanned
+          }` // If it's a relative URL, prepend BASE_URL with a slash
       : null;
-  
+
     // console.log("Final Profile Picture URL:", coreKwsMember.profile_picture);
     // console.log("Final Scanned Form URL:", coreKwsMember.form_scanned);
 
     return res.status(200).json({ data: coreKwsMember });
   } catch (error) {
     console.error("Error fetching core_kwsmember details:", error);
-    return res.status(500).json({ error: "An error occurred while fetching the details." });
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching the details." });
   }
 };
-
 
 export const createUpdateRequest = async (req, res) => {
   try {
@@ -391,7 +427,7 @@ export const createUpdateRequest = async (req, res) => {
         requested_date: new Date(),
         updated_date: new Date(),
         processed: false, // Initially, it's not processed
-        data: formData,  // Storing the form data as JSON
+        data: formData, // Storing the form data as JSON
         member_id: memberId,
       },
     });
@@ -406,12 +442,10 @@ export const createUpdateRequest = async (req, res) => {
   }
 };
 
-
 export const checkPendingRequest = async (req, res) => {
   const { userId } = req.params; // Get userId from params
 
   try {
-  
     // Check if there is any pending request for this user
     const existingRequest = await prisma.core_informationupdate.findFirst({
       where: {
@@ -419,8 +453,6 @@ export const checkPendingRequest = async (req, res) => {
         processed: false, // Only look for unprocessed requests
       },
     });
-
- 
 
     if (existingRequest) {
       return res.status(200).json({ pending: true });
@@ -433,13 +465,12 @@ export const checkPendingRequest = async (req, res) => {
   }
 };
 
-
 export const getPendingUpdateRequests = async (req, res) => {
   try {
     // Fetch all pending update requests from the core_informationupdate table
     const requests = await prisma.core_informationupdate.findMany({
-      where: { processed: false },  // Only fetch unprocessed requests
-      orderBy: { requested_date: 'desc' },  // Ordering by requested date in descending order
+      where: { processed: false }, // Only fetch unprocessed requests
+      orderBy: { requested_date: "desc" }, // Ordering by requested date in descending order
       include: {
         core_kwsmember: {
           select: {
@@ -447,118 +478,119 @@ export const getPendingUpdateRequests = async (req, res) => {
             type_of_member: true,
             zone_member: true,
             first_name: true,
-            last_name: true,    
-            education_qualification:true,
-            email:true,
-            profession:true,
-            kuwait_contact:true,
-            kuwait_whatsapp:true,
-            marital_status:true,
-            family_in_kuwait:true,
-            flat_no:true,
-            floor_no:true,
-            block_no:true,
-            building_name_no:true,
-            street_no_name:true,
-            area:true,
-            residence_complete_address:true,
-            pin_no_india:true,
-            mohalla_village:true,
-            taluka:true,
-            district:true,
-            native_pin_no:true,
-            emergency_name_kuwait:true,
-            emergency_contact_kuwait:true,
-            emergency_name_india:true,
-            emergency_contact_india:true,
-            father_name:true,
-            mother_name:true,
-            spouse_name:true,
-            child_name_1:true,
-            child_name_2:true,
-            child_name_3:true,
-            child_name_4:true,
-            child_name_5:true,
-            full_name_1:true,
-            relation_1:true,
-            percentage_1:true,
-            mobile_1:true,
-            full_name_2:true,
-            relation_2:true,
-            percentage_2:true,
-            mobile_2:true,
-            full_name_3:true,
-            relation_3:true,
-            percentage_3:true,
-            mobile_3:true,
-            full_name_4:true,
-            relation_4:true,
-            percentage_4:true,
-            mobile_4:true,
-
+            last_name: true,
+            education_qualification: true,
+            email: true,
+            profession: true,
+            kuwait_contact: true,
+            kuwait_whatsapp: true,
+            marital_status: true,
+            family_in_kuwait: true,
+            flat_no: true,
+            floor_no: true,
+            block_no: true,
+            building_name_no: true,
+            street_no_name: true,
+            area: true,
+            residence_complete_address: true,
+            pin_no_india: true,
+            mohalla_village: true,
+            taluka: true,
+            district: true,
+            native_pin_no: true,
+            emergency_name_kuwait: true,
+            emergency_contact_kuwait: true,
+            emergency_name_india: true,
+            emergency_contact_india: true,
+            father_name: true,
+            mother_name: true,
+            spouse_name: true,
+            child_name_1: true,
+            child_name_2: true,
+            child_name_3: true,
+            child_name_4: true,
+            child_name_5: true,
+            full_name_1: true,
+            relation_1: true,
+            percentage_1: true,
+            mobile_1: true,
+            full_name_2: true,
+            relation_2: true,
+            percentage_2: true,
+            mobile_2: true,
+            full_name_3: true,
+            relation_3: true,
+            percentage_3: true,
+            mobile_3: true,
+            full_name_4: true,
+            relation_4: true,
+            percentage_4: true,
+            mobile_4: true,
           },
         },
       },
     });
 
     // Process each request to include both previous and requested data
-    const detailedRequests = await Promise.all(requests.map(async (request) => {
-      let user = null;
+    const detailedRequests = await Promise.all(
+      requests.map(async (request) => {
+        let user = null;
 
-      if (request.core_kwsmember && request.core_kwsmember.user_id) {
-        user = await prisma.users_user.findUnique({
-          where: { id: request.core_kwsmember.user_id }, // Get the user based on user_id
-          select: {
-            username: true, 
-          },
+        if (request.core_kwsmember && request.core_kwsmember.user_id) {
+          user = await prisma.users_user.findUnique({
+            where: { id: request.core_kwsmember.user_id }, // Get the user based on user_id
+            select: {
+              username: true,
+            },
+          });
+        }
+
+        // Format the requested_date before adding it to the response
+        const formattedDate = new Date(
+          request.requested_date
+        ).toLocaleDateString("en-US", {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         });
-      }
 
-      // Format the requested_date before adding it to the response
-      const formattedDate = new Date(request.requested_date).toLocaleDateString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
+        return {
+          ...request,
+          username: user ? user.username : null,
+          user_id: request.core_kwsmember?.user_id,
+          type_of_member: request.core_kwsmember?.type_of_member, // Return type_of_member
+          zone_member: request.core_kwsmember?.zone_member,
+          name: `${request.core_kwsmember?.first_name || ""} ${
+            request.core_kwsmember?.last_name || ""
+          }`,
+          requested_date: formattedDate, // Add the formatted requested_date
 
-      return {
-        ...request,
-        username: user ? user.username : null,
-        user_id: request.core_kwsmember?.user_id,
-        type_of_member: request.core_kwsmember?.type_of_member,  // Return type_of_member
-        zone_member: request.core_kwsmember?.zone_member, 
-        name: `${request.core_kwsmember?.first_name || ""} ${request.core_kwsmember?.last_name || ""}`,  
-        requested_date: formattedDate, // Add the formatted requested_date
-        
-        // Add previous and requested data for display
-        previous_data: request.core_kwsmember,  // Previous data from core_kwsmember
-        requested_data: request.data,  // Requested update data from core_informationupdate (stored JSON)
-      };
-    }));
-
-    
+          // Add previous and requested data for display
+          previous_data: request.core_kwsmember, // Previous data from core_kwsmember
+          requested_data: request.data, // Requested update data from core_informationupdate (stored JSON)
+        };
+      })
+    );
 
     // Sending the response back to the client with the fetched requests
     return res.status(200).json({
       message: "Pending update requests retrieved successfully.",
-      updateRequests: detailedRequests,  // The list of pending requests with additional user details
+      updateRequests: detailedRequests, // The list of pending requests with additional user details
     });
   } catch (error) {
     console.error("Error fetching pending requests:", error.message);
     // Handling errors if something goes wrong during fetching
-    return res.status(500).json({ message: "Error fetching pending update requests." });
+    return res
+      .status(500)
+      .json({ message: "Error fetching pending update requests." });
   }
 };
-
-
-
-
 
 // Helper function to format date to ISO-8601 format
 const formatDate = (date) => {
   // If the date is already in ISO format, just return it, otherwise format it
-  return date ? new Date(date).toISOString() : null; 
+  return date ? new Date(date).toISOString() : null;
 };
 
 export const approveUpdateRequest = async (req, res) => {
@@ -574,7 +606,9 @@ export const approveUpdateRequest = async (req, res) => {
     }
 
     if (updateRequest.processed) {
-      return res.status(400).json({ message: "This update request has already been processed." });
+      return res
+        .status(400)
+        .json({ message: "This update request has already been processed." });
     }
 
     // Format date fields to ISO-8601 if needed
@@ -582,21 +616,26 @@ export const approveUpdateRequest = async (req, res) => {
 
     // Format application_date, card_expiry_date, dob (and any other date fields)
     if (formattedData.application_date) {
-      formattedData.application_date = formatDate(formattedData.application_date); // Ensure ISO format
+      formattedData.application_date = formatDate(
+        formattedData.application_date
+      ); // Ensure ISO format
     }
 
     if (formattedData.card_expiry_date) {
-      formattedData.card_expiry_date = formatDate(formattedData.card_expiry_date); // Ensure ISO format
+      formattedData.card_expiry_date = formatDate(
+        formattedData.card_expiry_date
+      ); // Ensure ISO format
     }
 
     if (formattedData.card_printed_date) {
-      formattedData.card_printed_date = formatDate(formattedData.card_printed_date); // Ensure ISO format
+      formattedData.card_printed_date = formatDate(
+        formattedData.card_printed_date
+      ); // Ensure ISO format
     }
 
     if (formattedData.dob) {
       formattedData.dob = formatDate(formattedData.dob); // Ensure ISO format
     }
-
 
     if (formattedData.percentage_1) {
       formattedData.percentage_1 = parseInt(formattedData.percentage_1, 10); // Convert to integer
@@ -613,7 +652,6 @@ export const approveUpdateRequest = async (req, res) => {
     if (formattedData.percentage_4) {
       formattedData.percentage_4 = parseInt(formattedData.percentage_4, 10); // Convert to integer
     }
-
 
     // Update the core_kwsmember table with the new data
     const updatedMember = await prisma.core_kwsmember.update({
@@ -632,7 +670,8 @@ export const approveUpdateRequest = async (req, res) => {
     });
 
     return res.status(200).json({
-      message: "Update request approved and member profile updated successfully.",
+      message:
+        "Update request approved and member profile updated successfully.",
       updatedMember,
     });
   } catch (error) {
@@ -641,18 +680,17 @@ export const approveUpdateRequest = async (req, res) => {
   }
 };
 
-
-
-export const pendingrequest = async(req, res)=> {
+export const pendingrequest = async (req, res) => {
   try {
-    const count = await prisma.core_informationupdate.count(
-      {
-        where: { processed: false }, 
-   }, );
+    const count = await prisma.core_informationupdate.count({
+      where: { processed: false },
+    });
 
-    return res.status(200).json({ count }); 
+    return res.status(200).json({ count });
   } catch (error) {
     console.error("Error fetching transaction count:", error.message);
-    return res.status(500).json({ error: "Server error while fetching transaction count." });
+    return res
+      .status(500)
+      .json({ error: "Server error while fetching transaction count." });
   }
-}
+};

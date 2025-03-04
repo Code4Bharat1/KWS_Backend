@@ -161,7 +161,7 @@ model core_auditfailedemail {
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model core_auditmembertransactions {
   id                                                                       BigInt                  @id @default(autoincrement())
-  category                                                                 String                  @db.VarChar(15)
+  category                                                                 String                  @db.VarChar(20)
   amount                                                                   Decimal                 @db.Decimal(10, 3)
   date                                                                     DateTime                @db.Date
   remarks                                                                  String?
@@ -415,7 +415,7 @@ model core_kwsmember {
   zone_member                                                                                     String?                           @db.VarChar(10)
   office_comments                                                                                 String?
   membership_status                                                                               String?                           @db.VarChar(10)
-  requested_membership                                                                            String                            @default("")
+  requested_membership                                                                            String?                           @db.VarChar(255)
   general_address                                                                                 String?                           @db.VarChar(255)
   core_attendee                                                                                   core_attendee[]
   core_auditattendee                                                                              core_auditattendee[]
@@ -436,9 +436,11 @@ model core_kwsmember {
   users_user                                                                                      users_user                        @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_kwsmember_user_id_88bb0b4e_fk_users_user_id")
   core_memberrenewal                                                                              core_memberrenewal[]
   core_membertransaction                                                                          core_membertransaction[]
+  core_membertransaction_core_membertransaction_approved_by_idTocore_kwsmember                    core_membertransaction[]          @relation("core_membertransaction_approved_by_idTocore_kwsmember")
   core_sandouqchaboxholder_core_sandouqchaboxholder_member_idTocore_kwsmember                     core_sandouqchaboxholder?         @relation("core_sandouqchaboxholder_member_idTocore_kwsmember")
   core_sandouqchaboxholder_core_sandouqchaboxholder_referred_by_idTocore_kwsmember                core_sandouqchaboxholder[]        @relation("core_sandouqchaboxholder_referred_by_idTocore_kwsmember")
   core_sandouqchatransaction                                                                      core_sandouqchatransaction[]
+  core_sandouqchatransaction_core_sandouqchatransaction_approved_by_idTocore_kwsmember            core_sandouqchatransaction[]      @relation("core_sandouqchatransaction_approved_by_idTocore_kwsmember")
 
   @@index([civil_id], map: "core_kwsmember_civil_id_9d8c8e12_like")
   @@index([kwsid], map: "core_kwsmember_kwsid_e46800af")
@@ -462,15 +464,18 @@ model core_luckydraw {
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model core_membertransaction {
-  id                           BigInt                         @id @default(autoincrement())
-  category                     String                         @db.VarChar(15)
-  amount                       Decimal                        @db.Decimal(10, 3)
-  date                         DateTime                       @db.Date
-  remarks                      String?
-  member_id                    BigInt?
-  slip                         String?                        @db.VarChar(100)
-  core_auditmembertransactions core_auditmembertransactions[]
-  core_kwsmember               core_kwsmember?                @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_membertransacti_member_id_a9db06b1_fk_core_kwsm")
+  id                                                                   BigInt                         @id @default(autoincrement())
+  category                                                             String                         @db.VarChar(20)
+  amount                                                               Decimal                        @db.Decimal(10, 3)
+  date                                                                 DateTime                       @db.Date
+  remarks                                                              String?
+  member_id                                                            BigInt?
+  slip                                                                 String?                        @db.VarChar(100)
+  approved_by_id                                                       BigInt?
+  status                                                               String                         @default("pending") @db.VarChar(10)
+  core_auditmembertransactions                                         core_auditmembertransactions[]
+  core_kwsmember                                                       core_kwsmember?                @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_membertransacti_member_id_a9db06b1_fk_core_kwsm")
+  core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember core_kwsmember?                @relation("core_membertransaction_approved_by_idTocore_kwsmember", fields: [approved_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_approved_by")
 
   @@index([member_id], map: "core_membertransaction_member_id_a9db06b1")
 }
@@ -525,27 +530,29 @@ model core_sandouqchaboxholder {
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
 model core_sandouqchatransaction {
-  id                              BigInt                            @id @default(autoincrement())
-  date                            DateTime                          @db.Date
-  note_20                         Int
-  note_10                         Int
-  note_5                          Int
-  note_1                          Int
-  note_0_5                        Int
-  note_0_25                       Int
-  coin_100                        Int
-  coin_50                         Int
-  coin_20                         Int
-  coin_10                         Int
-  coin_5                          Int
-  box_id                          BigInt?
-  collected_by_id                 BigInt?
-  status                          String                            @db.VarChar(10)
-  TID                             String                            @db.VarChar(12)
-  slip                            String?                           @db.VarChar(100)
-  core_auditsandouqchatransaction core_auditsandouqchatransaction[]
-  core_sandouqchaboxholder        core_sandouqchaboxholder?         @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_box_id_75519a4e_fk_core_sand")
-  core_kwsmember                  core_kwsmember?                   @relation(fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_collected_by_id_41f2b692_fk_core_kwsm")
+  id                                                                       BigInt                            @id @default(autoincrement())
+  date                                                                     DateTime                          @db.Date
+  note_20                                                                  Int
+  note_10                                                                  Int
+  note_5                                                                   Int
+  note_1                                                                   Int
+  note_0_5                                                                 Int
+  note_0_25                                                                Int
+  coin_100                                                                 Int
+  coin_50                                                                  Int
+  coin_20                                                                  Int
+  coin_10                                                                  Int
+  coin_5                                                                   Int
+  box_id                                                                   BigInt?
+  collected_by_id                                                          BigInt?
+  status                                                                   String                            @db.VarChar(10)
+  TID                                                                      String                            @db.VarChar(12)
+  slip                                                                     String?                           @db.VarChar(100)
+  approved_by_id                                                           BigInt?
+  core_auditsandouqchatransaction                                          core_auditsandouqchatransaction[]
+  core_sandouqchaboxholder                                                 core_sandouqchaboxholder?         @relation(fields: [box_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_box_id_75519a4e_fk_core_sand")
+  core_kwsmember                                                           core_kwsmember?                   @relation(fields: [collected_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_sandouqchatrans_collected_by_id_41f2b692_fk_core_kwsm")
+  core_kwsmember_core_sandouqchatransaction_approved_by_idTocore_kwsmember core_kwsmember?                   @relation("core_sandouqchatransaction_approved_by_idTocore_kwsmember", fields: [approved_by_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_approved_by")
 
   @@index([box_id], map: "core_sandouqchatransaction_box_id_75519a4e")
   @@index([collected_by_id], map: "core_sandouqchatransaction_collected_by_id_41f2b692")
@@ -796,4 +803,35 @@ model core_memberrenewal {
   core_kwsmember core_kwsmember? @relation(fields: [member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_memberrenewal_member_id_f10247f3_fk_core_kwsmember_user_id")
 
   @@index([member_id], map: "core_memberrenewal_member_id_f10247f3")
+}
+
+
+model core_raffle {
+  id           BigInt             @id @default(autoincrement())
+  name         String             @db.VarChar(250)
+  prize        String             @db.VarChar(250)
+  organizer_id String             @db.VarChar(50)
+  start_date   DateTime           @db.Timestamptz(6)
+  end_date     DateTime           @db.Timestamptz(6)
+
+  // Relation: One raffle can have many tickets
+  core_raffleTickets core_raffleTicket[]
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations.
+model core_raffleTicket {
+  id                    BigInt                  @id @default(autoincrement())
+  name                  String                  @db.VarChar(250)
+  phone                 String                  @db.VarChar(50)
+  civil_id              String                  @db.VarChar(12)
+  ticket_no             String                  @db.VarChar(50)
+  amount_in_kwd         Decimal                 @db.Decimal(10, 3)
+  raffle_id             BigInt?
+  timestamp             DateTime                @db.Timestamptz(6)
+
+  // Relation: Many tickets can belong to one raffle
+  core_raffle           core_raffle?            @relation(fields: [raffle_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_raffleTicket_raffle_id_c6580ce6_fk_core_raffle_id")
+
+  @@unique([raffle_id, ticket_no], map: "unique_ticket_created_per_raffle")
+  @@index([raffle_id], map: "core_raffleTicket_raffle_id_c6580ce6")
 }

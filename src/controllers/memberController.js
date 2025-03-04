@@ -1,14 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 
-
 const prisma = new PrismaClient();
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import fs from 'fs';
+import fs from "fs";
 import path from "path";
 import { generateNextKwsId } from "../utils/kwsIdGenerator.js";
 import { sendApprovalEmail } from "../utils/mail.js";
-
 
 dotenv.config();
 
@@ -39,14 +37,10 @@ export const getPendingApprovals = async (req, res) => {
   }
 };
 
-
-
-
 // update status
 BigInt.prototype.toJSON = function () {
   return this.toString();
 };
-
 
 export const updateApprovalStatus = async (req, res) => {
   try {
@@ -63,12 +57,9 @@ export const updateApprovalStatus = async (req, res) => {
       ...updatedFields
     } = req.body;
 
-   
-
     let userId;
     try {
       userId = BigInt(user_id); // Ensure user_id is a BigInt
-  
     } catch (err) {
       console.error("[ERROR] Invalid user_id format:", err.message);
       return res.status(400).json({ message: "Invalid user_id format." });
@@ -87,8 +78,13 @@ export const updateApprovalStatus = async (req, res) => {
         (value) => value !== null && isNaN(value)
       )
     ) {
-      console.error("[ERROR] Invalid percentage values provided:", parsedPercentages);
-      return res.status(400).json({ message: "Invalid percentage values provided." });
+      console.error(
+        "[ERROR] Invalid percentage values provided:",
+        parsedPercentages
+      );
+      return res
+        .status(400)
+        .json({ message: "Invalid percentage values provided." });
     }
 
     // Validate date fields
@@ -108,8 +104,6 @@ export const updateApprovalStatus = async (req, res) => {
       ? parseDate(card_expiry_date)
       : null;
 
-   
-
     // Fetch existing member
     const existingMember = await prisma.core_kwsmember.findUnique({
       where: { user_id: userId },
@@ -120,18 +114,14 @@ export const updateApprovalStatus = async (req, res) => {
       return res.status(404).json({ message: "Member not found." });
     }
 
-
     let newKwsId = existingMember.kwsid || "NA";
-
 
     if (
       membership_status.toLowerCase() === "approved" &&
       (!existingMember.kwsid || existingMember.kwsid === "NA")
     ) {
       newKwsId = await generateNextKwsId();
-     
     }
-
 
     const memberUpdateData = {
       ...updatedFields,
@@ -141,36 +131,33 @@ export const updateApprovalStatus = async (req, res) => {
       card_printed_date: cardPrintedDateAsDate,
       card_expiry_date: cardExpiryDateAsDate,
       updated_date: new Date(),
-      ...(membership_status.toLowerCase() === "approved" && { kwsid: newKwsId }),
-    
+      ...(membership_status.toLowerCase() === "approved" && {
+        kwsid: newKwsId,
+      }),
     };
 
     delete memberUpdateData.user_id;
 
-
-   
-
     const uploadedFiles = req.files;
     if (uploadedFiles) {
       if (uploadedFiles.profile_picture) {
-        memberUpdateData.profile_picture = uploadedFiles.profile_picture[0].path;
+        memberUpdateData.profile_picture =
+          uploadedFiles.profile_picture[0].path;
       }
       if (uploadedFiles.form_scanned) {
         memberUpdateData.form_scanned = uploadedFiles.form_scanned[0].path;
       }
       if (uploadedFiles.transactionSlip) {
-        memberUpdateData.transactionSlip = uploadedFiles.transactionSlip[0].path;
+        memberUpdateData.transactionSlip =
+          uploadedFiles.transactionSlip[0].path;
       }
     }
 
-
-  
     const transaction = [
       prisma.core_kwsmember.update({
         where: { user_id: userId },
         data: memberUpdateData,
       }),
-   
     ];
     if (membership_status.toLowerCase() === "approved") {
       transaction.push(
@@ -190,7 +177,9 @@ export const updateApprovalStatus = async (req, res) => {
       // console.log("[DEBUG] Transaction successful:", { updatedMember, updatedUser });
     } catch (transactionError) {
       console.error("[ERROR] Transaction failed:", transactionError.message);
-      return res.status(500).json({ message: "Failed to update user information." });
+      return res
+        .status(500)
+        .json({ message: "Failed to update user information." });
     }
 
     if (membership_status.toLowerCase() === "approved") {
@@ -198,7 +187,10 @@ export const updateApprovalStatus = async (req, res) => {
         await sendApprovalEmail(updatedUser.email, newKwsId);
         // console.log("[DEBUG] Approval email sent to:", updatedUser.email);
       } catch (emailError) {
-        console.error("[ERROR] Error sending approval email:", emailError.message);
+        console.error(
+          "[ERROR] Error sending approval email:",
+          emailError.message
+        );
       }
     }
 
@@ -216,15 +208,11 @@ export const updateApprovalStatus = async (req, res) => {
   }
 };
 
-
-
-
-
 export const getAllMembers = async (req, res) => {
   const formatDate = (date) => {
     if (!date) return "-";
-    
-    const formattedDate = new Date(date).toISOString().split("T")[0]; 
+
+    const formattedDate = new Date(date).toISOString().split("T")[0];
 
     if (formattedDate === "1800-01-01") return "-";
 
@@ -238,57 +226,68 @@ export const getAllMembers = async (req, res) => {
     const members = await prisma.core_kwsmember.findMany({
       where: {
         membership_status: {
-          in: ["approved", "inactive"],
-            mode: "insensitive", 
-        
+          in: ["approved", "inactive", "rejected"],
+          mode: "insensitive",
         },
       },
       select: {
-        user_id:true,
+        user_id: true,
         kwsid: true,
         civil_id: true,
         first_name: true,
-        middle_name: true, 
-        last_name: true, 
+        middle_name: true,
+        last_name: true,
         zone_member: true,
-        kuwait_contact: true, 
-        type_of_member: true, 
-        card_printed_date:true,
-        card_expiry_date:true,
+        kuwait_contact: true,
+        type_of_member: true,
+        card_printed_date: true,
+        card_expiry_date: true,
         membership_status: true,
       },
       orderBy: {
-        kwsid: "asc", 
+        kwsid: "asc",
       },
     });
 
+    const cId = await prisma.core_kwsmember.findFirst({
+      where: {
+        civil_id: "284062700456",
+      },
+    });
+
+    console.log(cId);
 
     const formattedMembers = members.map((member) => {
- 
       return {
-      user_id:member.user_id,
-      kwsid: member.kwsid,
-      civil_id: member.civil_id,
-      name: `${member.first_name} ${member.middle_name || ""} ${member.last_name}`.trim(),
-      zone: member.zone_member,
-      contact: member.kuwait_contact,
-      typeOfMember: member.type_of_member,
-      cardPrinted:formatDate(member.card_printed_date),
-      cardValidty: formatDate(member.card_expiry_date) ,
-      status: member.membership_status === "approved" ? "active" : "inactive" ,
-  };
-  });
+        user_id: member.user_id,
+        kwsid: member.kwsid,
+        civil_id: member.civil_id,
+        name: `${member.first_name} ${member.middle_name || ""} ${
+          member.last_name
+        }`.trim(),
+        zone: member.zone_member,
+        contact: member.kuwait_contact,
+        typeOfMember: member.type_of_member,
+        cardPrinted: formatDate(member.card_printed_date),
+        cardValidty: formatDate(member.card_expiry_date),
+        status:
+          member.membership_status === "approved"
+            ? "active"
+            : member.membership_status === "rejected"
+            ? "rejected"
+            : "inactive",
+      };
+    });
 
     // Send response
     res.status(200).json({ members: formattedMembers });
   } catch (error) {
     console.error("Error fetching members:", error);
-    res.status(500).json({ message: "Failed to fetch members", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Failed to fetch members", error: error.message });
   }
 };
-
-
-
 
 export const getChart = async (req, res) => {
   try {
@@ -320,8 +319,16 @@ export const getChart = async (req, res) => {
 
     // Define a larger set of predefined colors
     const predefinedColors = [
-      "#CCDF92", "#DE3163", "#10B981", "#BE3144", "#FFA520",
-      "#FF6384", "#36A2EB", "#4BC0C0", "#9966FF", "#FF9F40",
+      "#CCDF92",
+      "#DE3163",
+      "#10B981",
+      "#BE3144",
+      "#FFA520",
+      "#FF6384",
+      "#36A2EB",
+      "#4BC0C0",
+      "#9966FF",
+      "#FF9F40",
     ];
 
     // Generate additional random colors if needed
@@ -345,8 +352,8 @@ export const getChart = async (req, res) => {
     };
 
     // Assign colors dynamically
-    const backgroundColors = zoneData.map((_, index) =>
-      predefinedColors[index] || getRandomColor()
+    const backgroundColors = zoneData.map(
+      (_, index) => predefinedColors[index] || getRandomColor()
     );
 
     // Generate darker border colors from background colors
@@ -369,40 +376,38 @@ export const getChart = async (req, res) => {
     res.json(chartData);
   } catch (error) {
     console.error("Error fetching chart data:", error);
-    res.status(500).json({ error: "An error occurred while fetching chart data" });
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching chart data" });
   }
 };
 
-
-
-
-export const memberCount = async (req, res)=> {
+export const memberCount = async (req, res) => {
   try {
     const count = await prisma.core_kwsmember.count();
 
-    return res.status(200).json({ count }); 
+    return res.status(200).json({ count });
   } catch (error) {
     console.error("Error fetching transaction count:", error.message);
-    return res.status(500).json({ error: "Server error while fetching transaction count." });
+    return res
+      .status(500)
+      .json({ error: "Server error while fetching transaction count." });
   }
 };
 
-
-export const pendingCount = async(req, res)=> {
+export const pendingCount = async (req, res) => {
   try {
-    const count = await prisma.core_kwsmember.count(
-      {
-        where: {
-          membership_status: "pending", 
-        },
+    const count = await prisma.core_kwsmember.count({
+      where: {
+        membership_status: "pending",
       },
-    );
+    });
 
-    return res.status(200).json({ count }); 
+    return res.status(200).json({ count });
   } catch (error) {
     console.error("Error fetching transaction count:", error.message);
-    return res.status(500).json({ error: "Server error while fetching transaction count." });
+    return res
+      .status(500)
+      .json({ error: "Server error while fetching transaction count." });
   }
-
-}
-
+};
