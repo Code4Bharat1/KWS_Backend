@@ -114,8 +114,6 @@ export const editProfile = async (req, res) => {
           where: { civil_id: updateData.civil_id },
         });
 
-        console.log(duplicateUsers);
-
         // Check if any duplicate user has membership_status: "approved"
         const hasApprovedUser = duplicateUsers.some(
           (user) => user.membership_status === "approved"
