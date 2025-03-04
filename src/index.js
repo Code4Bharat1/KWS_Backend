@@ -16,7 +16,7 @@ import eventRoutes from "./routes/eventRoutes.js";
 import nonkwsRoutes from "./routes/nonkwsRoutes.js";
 import forgotRoutes from "./routes/forgotRoutes.js";
 import { setupEventListeners } from "./middleware/eventListener.js";
-import raffleRoutes from "./routes/raffle.route.js";
+// import raffleRoutes from "./routes/raffle.route.js";
 
 dotenv.config();
 const app = express();
@@ -87,7 +87,7 @@ app.use("/api/event", eventRoutes);
 app.use("/api/nonkws", nonkwsRoutes);
 app.use("/api/forgot", forgotRoutes);
 
-app.use("/api/raffle", raffleRoutes);
+// app.use("/api/raffle", raffleRoutes);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
