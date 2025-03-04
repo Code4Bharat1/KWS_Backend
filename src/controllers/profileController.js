@@ -100,20 +100,35 @@ export const editProfile = async (req, res) => {
 
     const existingUser = await prisma.core_kwsmember.findUnique({
       where: { user_id: parsedUserId },
-      select: { civil_id: true },
+      select: { civil_id: true, membership_status: true }, // Include membership_status in the query
     });
 
-    if (updateData.civil_id && existingUser.civil_id === updateData.civil_id) {
-      delete updateData.civil_id; // Prevent updating the same civil_id
-    } else if (updateData.civil_id) {
-      const duplicateUser = await prisma.core_kwsmember.findFirst({
-        where: { civil_id: updateData.civil_id },
-      });
-      if (duplicateUser) {
-        return res.status(400).json({ error: "Civil ID already exists." });
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (updateData.civil_id && updateData.civil_id !== existingUser.civil_id) {
+      // If the membership_status is not "rejected", check for duplicate civil_id
+      if (existingUser.membership_status === "approved") {
+        const duplicateUsers = await prisma.core_kwsmember.findMany({
+          where: { civil_id: updateData.civil_id },
+        });
+
+        console.log(duplicateUsers);
+
+        // Check if any duplicate user has membership_status: "approved"
+        const hasApprovedUser = duplicateUsers.some(
+          (user) => user.membership_status === "approved"
+        );
+
+        if (hasApprovedUser) {
+          console.log("Civil ID exists and is approved");
+          return res.status(400).json({ error: "Civil ID already exists." });
+        }
       }
     }
 
+    // Date validation for dob
     if (dob) {
       const parsedDob = new Date(dob);
       if (isNaN(parsedDob)) {
@@ -124,6 +139,7 @@ export const editProfile = async (req, res) => {
       updateData.dob = parsedDob.toISOString();
     }
 
+    // Date validation for application_date
     if (application_date) {
       const parsedDate = new Date(application_date);
       if (isNaN(parsedDate)) {
@@ -134,6 +150,7 @@ export const editProfile = async (req, res) => {
       updateData.application_date = parsedDate;
     }
 
+    // Handle profile picture upload
     if (req.files?.profile_picture?.length > 0) {
       const profilePic = req.files.profile_picture[0];
       const uploadDir = path.resolve("uploads/profile-pictures");
@@ -145,6 +162,7 @@ export const editProfile = async (req, res) => {
       updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
     }
 
+    // Date validation for card_expiry_date
     if (updateData.card_expiry_date) {
       const parsedExpiryDate = new Date(updateData.card_expiry_date);
       if (isNaN(parsedExpiryDate)) {
@@ -155,6 +173,7 @@ export const editProfile = async (req, res) => {
       updateData.card_expiry_date = parsedExpiryDate.toISOString();
     }
 
+    // Date validation for card_printed_date
     if (updateData.card_printed_date) {
       const parsedPrintedDate = new Date(updateData.card_printed_date);
       if (isNaN(parsedPrintedDate)) {
@@ -165,6 +184,7 @@ export const editProfile = async (req, res) => {
       updateData.card_printed_date = parsedPrintedDate.toISOString();
     }
 
+    // Validate percentage fields
     ["percentage_1", "percentage_2", "percentage_3", "percentage_4"].forEach(
       (field) => {
         if (updateData[field]) {
@@ -179,6 +199,7 @@ export const editProfile = async (req, res) => {
       }
     );
 
+    // Handle form_scanned upload
     if (req.files?.form_scanned?.length > 0) {
       const scannedForm = req.files.form_scanned[0];
       const uploadDir = path.resolve("uploads/form-scanned");
@@ -190,6 +211,7 @@ export const editProfile = async (req, res) => {
       updateData.form_scanned = `uploads/form-scanned/${scannedForm.filename}`;
     }
 
+    // Handle membership_status and is_active
     let isActiveStatus = null;
     if (membership_status) {
       if (membership_status.toLowerCase() === "inactive") {
@@ -200,6 +222,7 @@ export const editProfile = async (req, res) => {
       updateData.membership_status = membership_status;
     }
 
+    // Update user profile
     const [updatedUser] = await prisma.$transaction([
       prisma.core_kwsmember.update({
         where: { user_id: parsedUserId },
@@ -225,9 +248,6 @@ export const editProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Error updating user profile:", error);
-    if (error.code === "P2002" && error.meta?.target.includes("civil_id")) {
-      return res.status(400).json({ error: "Civil ID already exists." });
-    }
     return res
       .status(500)
       .json({ error: "An error occurred while updating the user profile." });

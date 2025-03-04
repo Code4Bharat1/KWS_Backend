@@ -340,7 +340,7 @@ model core_informationupdate {
 model core_kwsmember {
   profile_picture                                                                                 String?                           @db.VarChar(100)
   user_id                                                                                         BigInt                            @id
-  civil_id                                                                                        String                            @unique
+  civil_id                                                                                        String                            @db.VarChar(50)
   first_name                                                                                      String?                           @db.VarChar(150)
   middle_name                                                                                     String?                           @db.VarChar(150)
   last_name                                                                                       String?                           @db.VarChar(150)
@@ -805,32 +805,27 @@ model core_memberrenewal {
   @@index([member_id], map: "core_memberrenewal_member_id_f10247f3")
 }
 
-
 model core_raffle {
-  id           BigInt             @id @default(autoincrement())
-  name         String             @db.VarChar(250)
-  prize        String             @db.VarChar(250)
-  organizer_id String             @db.VarChar(50)
-  start_date   DateTime           @db.Timestamptz(6)
-  end_date     DateTime           @db.Timestamptz(6)
-
-  // Relation: One raffle can have many tickets
+  id                 BigInt              @id @default(autoincrement())
+  name               String              @db.VarChar(250)
+  prize              String              @db.VarChar(250)
+  organizer_id       String              @db.VarChar(50)
+  start_date         DateTime            @db.Timestamptz(6)
+  end_date           DateTime            @db.Timestamptz(6)
   core_raffleTickets core_raffleTicket[]
 }
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations.
 model core_raffleTicket {
-  id                    BigInt                  @id @default(autoincrement())
-  name                  String                  @db.VarChar(250)
-  phone                 String                  @db.VarChar(50)
-  civil_id              String                  @db.VarChar(12)
-  ticket_no             String                  @db.VarChar(50)
-  amount_in_kwd         Decimal                 @db.Decimal(10, 3)
-  raffle_id             BigInt?
-  timestamp             DateTime                @db.Timestamptz(6)
-
-  // Relation: Many tickets can belong to one raffle
-  core_raffle           core_raffle?            @relation(fields: [raffle_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_raffleTicket_raffle_id_c6580ce6_fk_core_raffle_id")
+  id            BigInt       @id @default(autoincrement())
+  name          String       @db.VarChar(250)
+  phone         String       @db.VarChar(50)
+  civil_id      String       @db.VarChar(12)
+  ticket_no     String       @db.VarChar(50)
+  amount_in_kwd Decimal      @db.Decimal(10, 3)
+  raffle_id     BigInt?
+  timestamp     DateTime     @db.Timestamptz(6)
+  core_raffle   core_raffle? @relation(fields: [raffle_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_raffleTicket_raffle_id_c6580ce6_fk_core_raffle_id")
 
   @@unique([raffle_id, ticket_no], map: "unique_ticket_created_per_raffle")
   @@index([raffle_id], map: "core_raffleTicket_raffle_id_c6580ce6")

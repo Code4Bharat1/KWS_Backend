@@ -249,14 +249,6 @@ export const getAllMembers = async (req, res) => {
       },
     });
 
-    const cId = await prisma.core_kwsmember.findFirst({
-      where: {
-        civil_id: "284062700456",
-      },
-    });
-
-    console.log(cId);
-
     const formattedMembers = members.map((member) => {
       return {
         user_id: member.user_id,
