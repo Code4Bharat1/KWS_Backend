@@ -629,55 +629,40 @@ export const approveUpdateRequest = async (req, res) => {
         .json({ message: "This update request has already been processed." });
     }
 
-    // Format date fields to ISO-8601 if needed
     const formattedData = { ...updateRequest.data };
 
-    // Format application_date, card_expiry_date, dob (and any other date fields)
-    if (formattedData.application_date) {
-      formattedData.application_date = formatDate(
-        formattedData.application_date
-      ); // Ensure ISO format
-    }
+    const formatDateIfExists = (key) => {
+      if (formattedData[key]) {
+        formattedData[key] = formatDate(formattedData[key]);
+      }
+    };
 
-    if (formattedData.card_expiry_date) {
-      formattedData.card_expiry_date = formatDate(
-        formattedData.card_expiry_date
-      ); // Ensure ISO format
-    }
+    [
+      "application_date",
+      "card_expiry_date",
+      "card_printed_date",
+      "dob",
+    ].forEach(formatDateIfExists);
 
-    if (formattedData.card_printed_date) {
-      formattedData.card_printed_date = formatDate(
-        formattedData.card_printed_date
-      ); // Ensure ISO format
-    }
+    const convertToNumberIfValid = (key) => {
+      if (
+        formattedData[key] !== undefined &&
+        formattedData[key] !== null &&
+        !isNaN(Number(formattedData[key]))
+      ) {
+        formattedData[key] = Number(formattedData[key]);
+      }
+    };
 
-    if (formattedData.dob) {
-      formattedData.dob = formatDate(formattedData.dob); // Ensure ISO format
-    }
+    ["percentage_1", "percentage_2", "percentage_3", "percentage_4"].forEach(
+      convertToNumberIfValid
+    );
 
-    if (formattedData.percentage_1) {
-      formattedData.percentage_1 = parseInt(formattedData.percentage_1, 10); // Convert to integer
-    }
-
-    if (formattedData.percentage_2) {
-      formattedData.percentage_2 = parseInt(formattedData.percentage_2, 10); // Convert to integer
-    }
-
-    if (formattedData.percentage_3) {
-      formattedData.percentage_3 = parseInt(formattedData.percentage_3, 10); // Convert to integer
-    }
-
-    if (formattedData.percentage_4) {
-      formattedData.percentage_4 = parseInt(formattedData.percentage_4, 10); // Convert to integer
-    }
-
-    // Update the core_kwsmember table with the new data
     const updatedMember = await prisma.core_kwsmember.update({
       where: { user_id: updateRequest.member_id },
       data: formattedData,
     });
 
-    // Mark the update request as processed
     await prisma.core_informationupdate.update({
       where: { id: updateRequestId },
       data: {
