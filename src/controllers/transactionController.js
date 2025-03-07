@@ -1,7 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
-
 const formatDate = (date) => {
   if (!date) return "N/A";
   const options = { day: "numeric", month: "long", year: "numeric" };
@@ -17,7 +16,7 @@ export const addTransactions = async (req, res) => {
   try {
     const {
       kwsId,
-      paymentFor, 
+      paymentFor,
       cardPrintedDate,
       cardExpiryDate,
       amountKWD,
@@ -92,14 +91,13 @@ export const addTransactions = async (req, res) => {
       data: {
         member_id: member.user_id,
         category: paymentFor,
-        approved_by_id:null,
+        approved_by_id: null,
         amount: parseFloat(amountKWD),
         date: new Date(date),
         remarks: remarks || null,
       },
     });
 
-   
     await prisma.core_auditmembertransactions.create({
       data: {
         category: newTransaction.category,
@@ -165,14 +163,15 @@ export const editTransactionofIndividual = async (req, res) => {
     // Find the existing transaction (for error checking)
     const oldTransaction = await prisma.core_membertransaction.findUnique({
       where: { id: BigInt(id) },
-      include:{
-      core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember: {
-        select: {
-          first_name: true,
-          last_name: true,
-          kwsid: true,
+      include: {
+        core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember: {
+          select: {
+            first_name: true,
+            last_name: true,
+            kwsid: true,
+          },
         },
-      },},
+      },
     });
 
     if (!oldTransaction) {
@@ -180,7 +179,7 @@ export const editTransactionofIndividual = async (req, res) => {
         .status(404)
         .json({ error: "No transaction found with the provided ID." });
     }
-   
+
     // Build the update data for core_membertransaction
     const updateData = {};
     if (category) updateData.category = category;
@@ -214,19 +213,19 @@ export const editTransactionofIndividual = async (req, res) => {
       const updateCoreMemberData = {};
 
       // If `cardPrintedDate` is `null`, we remove it; if string, we parse it.
-      if (cardPrintedDate !== undefined) {
-        updateCoreMemberData.card_printed_date =
-          cardPrintedDate === null ? null : new Date(cardPrintedDate);
-      }
+      // if (cardPrintedDate !== undefined) {
+      //   updateCoreMemberData.card_printed_date =
+      //     cardPrintedDate === null ? null : new Date(cardPrintedDate);
+      // }
       if (approvedByKwsid) {
         updateData.approved_by_id = approve?.user_id;
       }
 
       // Same logic for expiry date
-      if (cardExpiryDate !== undefined) {
-        updateCoreMemberData.card_expiry_date =
-          cardExpiryDate === null ? null : new Date(cardExpiryDate);
-      }
+      // if (cardExpiryDate !== undefined) {
+      //   updateCoreMemberData.card_expiry_date =
+      //     cardExpiryDate === null ? null : new Date(cardExpiryDate);
+      // }
 
       if (Object.keys(updateCoreMemberData).length > 0) {
         await prisma.core_kwsmember.update({
@@ -235,7 +234,6 @@ export const editTransactionofIndividual = async (req, res) => {
         });
       }
     }
-
 
     await prisma.core_auditmembertransactions.create({
       data: {
@@ -322,7 +320,7 @@ export const getTransactionslogs = async (req, res) => {
         remarks: true,
       },
     });
-    
+
     // Step 5: Format dates for each transaction before sending the response
     const formattedTransactions = transactions.map((transaction) => ({
       ...transaction,
@@ -348,7 +346,6 @@ export const getTransactions = async (req, res) => {
     // Extract filters from query parameters
     const { kwsId, category, fromDate, toDate } = req.query;
 
-
     const currentDate = new Date();
     const formattedCurrentDate = currentDate.toISOString().split("T")[0]; // Format as YYYY-MM-DD
 
@@ -365,7 +362,7 @@ export const getTransactions = async (req, res) => {
         mode: "insensitive", // Prisma's built-in case-insensitive filter
       };
     }
-    
+
     if (fromDate || toDate) {
       whereClause.date = {
         ...(fromDate && { gte: new Date(fromDate) }),
@@ -388,8 +385,8 @@ export const getTransactions = async (req, res) => {
         id: true,
         date: true,
         category: true,
-        status:true,
-        approved_by_id:true,
+        status: true,
+        approved_by_id: true,
         remarks: true,
         amount: true,
         core_kwsmember: {
@@ -397,7 +394,7 @@ export const getTransactions = async (req, res) => {
             user_id: true,
             kwsid: true,
             first_name: true,
-            last_name:true,
+            last_name: true,
             zone_member: true,
           },
         },
@@ -412,14 +409,14 @@ export const getTransactions = async (req, res) => {
           where: { action: "CREATED" }, // Only get logs where action is 'created'
           select: {
             committed_id: true,
-            core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember: {
-              select: {
-                first_name: true,
-                last_name: true,
-                kwsid: true,
+            core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember:
+              {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  kwsid: true,
+                },
               },
-            },
-           
           },
         },
       },
@@ -433,19 +430,23 @@ export const getTransactions = async (req, res) => {
     // Format the response
     const formattedTransactions = transactions.map((transaction) => {
       const audit = transaction.core_auditmembertransactions[0]; // Get the first 'created' action
-      const committer = audit?.core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember;
+      const committer =
+        audit?.core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember;
 
       return {
         UID: `0000${transaction.id}`,
         UserID: transaction.core_kwsmember?.user_id || "N/A",
         KWSID: transaction.core_kwsmember?.kwsid || "N/A",
         Date: formatDate(transaction.date),
-        approvedByKwsid: transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember
-        ? `${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.first_name} ${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.last_name} - ${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.kwsid}`
-        : "Not Approved",
+        approvedByKwsid:
+          transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember
+            ? `${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.first_name} ${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.last_name} - ${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.kwsid}`
+            : "Not Approved",
         Category: transaction.category,
         status: transaction.status,
-        For: `${transaction.core_kwsmember?.first_name || ""} ${transaction.core_kwsmember?.last_name || ""}-${transaction.core_kwsmember?.kwsid || "N/A"}`,
+        For: `${transaction.core_kwsmember?.first_name || ""} ${
+          transaction.core_kwsmember?.last_name || ""
+        }-${transaction.core_kwsmember?.kwsid || "N/A"}`,
         Remarks: transaction.remarks || "No remarks available",
         AmountKWD: formatAmount(transaction.amount),
         CommittedBy: committer
@@ -489,7 +490,6 @@ export const getTransactionofIndividual = async (req, res) => {
             card_printed_date: true,
             card_expiry_date: true,
           },
-          
         },
         core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember: {
           select: {
@@ -498,9 +498,7 @@ export const getTransactionofIndividual = async (req, res) => {
             kwsid: true,
           },
         },
-        
       },
-      
     });
 
     // If transaction not found
@@ -508,21 +506,20 @@ export const getTransactionofIndividual = async (req, res) => {
       return res.status(404).json({ error: "Transaction not found." });
     }
 
-    const approvedBy = transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember
-      ? `${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.kwsid}`
-      : "";
+    const approvedBy =
+      transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember
+        ? `${transaction.core_kwsmember_core_membertransaction_approved_by_idTocore_kwsmember.kwsid}`
+        : "";
 
     // Function to check and format the date
     const formatDate = (date) => {
       if (!date) return "Not Available";
 
-
       const parsedDate = new Date(date);
 
-   
       if (isNaN(parsedDate)) {
         console.error(`Invalid date format: ${date}`);
-        return "Invalid Date"; 
+        return "Invalid Date";
       }
 
       // Manually format the date to "YYYY-MM-DD" (ISO format without time)
@@ -538,7 +535,7 @@ export const getTransactionofIndividual = async (req, res) => {
       Name: `${transaction.core_kwsmember?.first_name || "N/A"} ${
         transaction.core_kwsmember?.last_name || ""
       }`,
-      status:transaction.status,
+      status: transaction.status,
       approvedByKwsid: approvedBy,
       Category: transaction.category,
       CardPrintedDate: formatDate(transaction.card_printed_date),
@@ -592,10 +589,11 @@ export const deleteTransactionofIndividual = async (req, res) => {
       return res.status(404).json({ error: "Transaction not found." });
     }
 
-    res.status(500).json({ error: "An error occurred while deleting the transaction." });
+    res
+      .status(500)
+      .json({ error: "An error occurred while deleting the transaction." });
   }
 };
-
 
 export const viewlogs = async (req, res) => {
   try {
@@ -610,7 +608,9 @@ export const viewlogs = async (req, res) => {
     // Validate that the normalized id is a valid number.
     if (!id || isNaN(Number(id))) {
       console.error("Invalid transaction id provided:", id);
-      return res.status(400).json({ error: "Valid transaction ID is required." });
+      return res
+        .status(400)
+        .json({ error: "Valid transaction ID is required." });
     }
 
     // Convert the normalized id to a BigInt, as defined in your schema.
@@ -624,7 +624,9 @@ export const viewlogs = async (req, res) => {
 
     if (!coreTransaction) {
       console.warn("No core member transaction found with id:", transactionId);
-      return res.status(404).json({ error: "Core member transaction not found." });
+      return res
+        .status(404)
+        .json({ error: "Core member transaction not found." });
     }
 
     // console.log("Found core member transaction:", coreTransaction);
@@ -636,29 +638,32 @@ export const viewlogs = async (req, res) => {
       },
       include: {
         // Include related member details for the committed_id.
-        core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember: {
-          select: {
-            user_id: true,
-            first_name: true,
-            last_name: true,
-            kwsid:true,
+        core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember:
+          {
+            select: {
+              user_id: true,
+              first_name: true,
+              last_name: true,
+              kwsid: true,
+            },
           },
-        },
       },
       orderBy: {
         created_date: "desc", // Order by newest first.
       },
     });
 
-
     if (!logs || logs.length === 0) {
       console.warn("No audit logs found for transactionId:", transactionId);
-      return res.status(404).json({ error: "No logs found for this transaction." });
+      return res
+        .status(404)
+        .json({ error: "No logs found for this transaction." });
     }
 
     // Format logs for cleaner output.
     const formattedLogs = logs.map((log) => {
-      const committer = log.core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember;
+      const committer =
+        log.core_kwsmember_core_auditmembertransactions_committed_idTocore_kwsmember;
       return {
         log_id: log.id,
         category: log.category,
@@ -676,12 +681,11 @@ export const viewlogs = async (req, res) => {
     return res.status(200).json(formattedLogs);
   } catch (error) {
     console.error("Error fetching logs:", error);
-    return res.status(500).json({ error: "An internal server error occurred." });
+    return res
+      .status(500)
+      .json({ error: "An internal server error occurred." });
   }
 };
-
-
-
 
 export const transactioncount = async (req, res) => {
   try {
@@ -691,6 +695,8 @@ export const transactioncount = async (req, res) => {
     return res.status(200).json({ count }); // Returning "count" instead of "transaction_count"
   } catch (error) {
     console.error("Error fetching transaction count:", error.message);
-    return res.status(500).json({ error: "Server error while fetching transaction count." });
+    return res
+      .status(500)
+      .json({ error: "Server error while fetching transaction count." });
   }
 };
