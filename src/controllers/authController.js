@@ -62,7 +62,7 @@ export const registerUser = async (req, res) => {
       nominations = [],
       requested_membership,
     } = req.body;
-    
+
     // Basic validation for required fields...
     if (!email || !password || !civil_id || !first_name || !gender) {
       return res.status(400).json({ message: "Missing required fields." });
@@ -86,9 +86,9 @@ export const registerUser = async (req, res) => {
     });
 
     if (existingCivilId) {
-      return res
-        .status(400)
-        .json({ message: "Civil ID already exists. Please use a unique Civil ID." });
+      return res.status(400).json({
+        message: "Civil ID already exists. Please use a unique Civil ID.",
+      });
     }
 
     // Check if the email is already registered
@@ -97,14 +97,13 @@ export const registerUser = async (req, res) => {
     });
 
     if (existingEmail) {
-      return res
-        .status(400)
-        .json({ message: "Email already registered. Please use a different email." });
+      return res.status(400).json({
+        message: "Email already registered. Please use a different email.",
+      });
     }
 
-
     const randomSuffix = crypto.randomBytes(3).toString("hex"); // Random 6-character string
-    const username = `${first_name.toLowerCase()}${randomSuffix}`; 
+    const username = `${first_name.toLowerCase()}${randomSuffix}`;
 
     // Hash the password and add a prefix
     const hashedPassword = await argon2.hash(password);
@@ -124,7 +123,6 @@ export const registerUser = async (req, res) => {
       },
     });
 
-  
     let parsedNominations = [];
     if (typeof nominations === "string") {
       try {
@@ -219,7 +217,7 @@ export const registerUser = async (req, res) => {
         child_name_4,
         child_name_5,
         additional_information,
-        profile_picture, 
+        profile_picture,
         ...flattenedNominations,
         application_date: new Date(),
         updated_date: new Date(),
@@ -243,19 +241,17 @@ export const registerUser = async (req, res) => {
   }
 };
 
-
-
-
-export const checkcivilid = async (req,res) => {
+export const checkcivilid = async (req, res) => {
   const { civil_id } = req.query;
   try {
-    const user = await prisma.core_kwsmember.findUnique({ where: { civil_id } });
+    const user = await prisma.core_kwsmember.findUnique({
+      where: { civil_id },
+    });
     res.json({ exists: !!user });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 
 export const checkemail = async (req, res) => {
   const { email } = req.query;
@@ -274,9 +270,7 @@ export const checkemail = async (req, res) => {
   }
 };
 
-
-
-export const checkkwsid = async(req, res)=> {
+export const checkkwsid = async (req, res) => {
   const { kwsid } = req.query;
 
   if (!kwsid) {
@@ -292,19 +286,6 @@ export const checkkwsid = async(req, res)=> {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // get a user (find)
 export const getUser = async (req, res) => {
@@ -329,14 +310,6 @@ export const getUser = async (req, res) => {
       .json({ message: "Server error during fetching user." });
   }
 };
-
-
-
-
-
-
-
-
 
 // get all users
 export const allUsers = async (req, res) => {
@@ -374,10 +347,6 @@ export const allUsers = async (req, res) => {
     return res.status(500).json({ message: "Server error fetching users." });
   }
 };
-
-
-
-
 
 // edit user (put)
 export const editUser = async (req, res) => {
@@ -529,16 +498,17 @@ export const loginUser = async (req, res) => {
   try {
     // Fetch user from the database
     const user = await prisma.users_user.findUnique({ where: { username } });
-    console.log("this is uyser",user);
-    
+
     if (!user) {
       console.error("User not found");
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (!user.is_active) {
-      return res.status(403).json({ message: "Account is inactive. Please contact support." });
-    }
+    // if (!user.is_active) {
+    //   return res
+    //     .status(403)
+    //     .json({ message: "Account is inactive. Please contact support." });
+    // }
 
     let hashedPassword = user.password.trim();
 
@@ -553,7 +523,7 @@ export const loginUser = async (req, res) => {
     const isMatch = await argon2.verify(`${hashedPassword}`, password);
     // console.log("Password verification result:", isMatch);
     console.log(isMatch);
-    
+
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
