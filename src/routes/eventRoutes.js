@@ -1,45 +1,45 @@
-import { Router } from 'express';
-import {getEventList,addEvent,editEvent,getEvent,deleteEvent,getTicketList,addTicket,getTicket,editTicket,deleteTicket,getAttendanceList,markAttendance} from '../controllers/eventController.js';
+import { Router } from "express";
+import {
+  getEventList,
+  addEvent,
+  editEvent,
+  getEvent,
+  deleteEvent,
+  getTicketList,
+  addTicket,
+  getTicket,
+  editTicket,
+  deleteTicket,
+  getAttendanceList,
+  markAttendance,
+} from "../controllers/eventController.js";
 
-const router  = Router();
+const router = Router();
 
-router.get('/get',getEventList);
+router.get("/get", getEventList);
 
-router.post('/add',addEvent);
+router.post("/add", addEvent);
 
-router.get('/get/:id',getEvent);
+router.get("/get/:id", getEvent);
 
+router.put("/edit/:id", editEvent);
 
-router.put('/edit/:id',editEvent);
+router.delete("/delete/:id", deleteEvent);
 
-router.delete('/delete/:id',deleteEvent);
+router.get("/tickets/:id", getTicketList);
 
+router.post("/addticket/:id", addTicket);
 
-router.get('/tickets/:id',getTicketList);
+router.get("/ticket/:ticket_no", getTicket);
 
+router.put("/editticket/:ticket_no", editTicket);
 
-router.post('/addticket/:id',addTicket);
+router.delete("/deleteticket/:ticket_no", deleteTicket);
 
+router.get("/attendancelist/:event_id", getAttendanceList);
 
-router.get('/ticket/:ticket_no',getTicket);
+router.get("/attendancelist/:event_id", getAttendanceList);
 
-router.put('/editticket/:ticket_no',editTicket);
-
-
-
-router.delete('/deleteticket/:ticket_no',deleteTicket);
-
-
-router.get('/attendancelist/:event_id',getAttendanceList);
-
-
-router.get('/attendancelist/:event_id',getAttendanceList);
-
-router.post('/markattendance/:event_id',markAttendance);
-
-
-
-
-
+router.post("/markattendance/:event_id", markAttendance);
 
 export default router;

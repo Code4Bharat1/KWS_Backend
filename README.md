@@ -1,5 +1,4 @@
-
-```markdown
+````markdown
 # KWS Backend Documentation
 
 ## Overview
@@ -18,6 +17,7 @@ The **KWS Backend** is designed to support the **Kokan Welfare Society** platfor
 ## Prerequisites
 
 Ensure the following are installed on your system:
+
 - **Node.js**: Version 18.x or later.
 - **NPM**: Version 7.x or later.
 - **PostgreSQL**: A running PostgreSQL instance to store your data.
@@ -31,6 +31,7 @@ Ensure the following are installed on your system:
 git clone https://github.com/yourusername/kws-backend.git
 cd kws-backend
 ```
+````
 
 ### 2. Install Dependencies
 
@@ -144,6 +145,7 @@ npx prisma migrate dev --name init
 - **`--name init`**: This is the name of the migration. You can use any name you prefer.
 
 This command will:
+
 1. **Generate a migration file** in the `prisma/migrations/` folder.
 2. **Apply the migration** to your PostgreSQL database.
 
@@ -185,6 +187,7 @@ npx prisma migrate dev --name add_role_to_user
 ```
 
 This will:
+
 - Generate a new migration to add the `role` field to the `User` table.
 - Apply the migration to your PostgreSQL database.
 
@@ -231,19 +234,23 @@ kws-backend/
 
 Here are some key Prisma commands you will use regularly:
 
-| Command                          | Description                                                                 |
-|----------------------------------|-----------------------------------------------------------------------------|
-| `npx prisma init`                | Initializes Prisma and creates the `schema.prisma` and `.env` file.         |
-| `npx prisma migrate dev`         | Applies pending migrations to the database and generates the Prisma Client. |
-| `npx prisma migrate dev --name`  | Creates a new migration with the given name.                                |
-| `npx prisma db pull`             | Introspects the database and updates the Prisma schema based on it.         |
-| `npx prisma studio`              | Opens Prisma Studio, a UI for managing your database.                       |
-| `npx prisma generate`            | Generates the Prisma Client to interact with the database.                  |
+| Command                         | Description                                                                 |
+| ------------------------------- | --------------------------------------------------------------------------- |
+| `npx prisma init`               | Initializes Prisma and creates the `schema.prisma` and `.env` file.         |
+| `npx prisma migrate dev`        | Applies pending migrations to the database and generates the Prisma Client. |
+| `npx prisma migrate dev --name` | Creates a new migration with the given name.                                |
+| `npx prisma db pull`            | Introspects the database and updates the Prisma schema based on it.         |
+| `npx prisma studio`             | Opens Prisma Studio, a UI for managing your database.                       |
+| `npx prisma generate`           | Generates the Prisma Client to interact with the database.                  |
 
 ## Conclusion
 
 Prisma simplifies the interaction with PostgreSQL by providing an intuitive API and powerful migration capabilities. You can easily modify your schema and apply those changes to your PostgreSQL database without directly writing SQL queries. By using Prisma, you can improve your development workflow and ensure your database remains in sync with your application code.
 
 ---
+
 Developers: Sanad Naqvi , Juned khan and Team.
+
+```
+
 ```

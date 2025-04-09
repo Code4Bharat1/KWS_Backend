@@ -351,6 +351,7 @@ export const getProfileAllDetails = async (req, res) => {
         follow_up_member: true,
         office_comments: true,
         membership_status: true,
+        reasonofinactive: true,
       },
     });
 

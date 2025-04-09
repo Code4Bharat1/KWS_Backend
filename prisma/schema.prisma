@@ -78,11 +78,14 @@ model core_attendee {
   attended_time      DateTime             @db.Timestamptz(6)
   event_id           BigInt?
   kws_member_id      BigInt?
+  civil_id           String?
+  kws_id             String?
+  name               String?
+  phone              BigInt?
   core_event         core_event?          @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_attendee_event_id_7f07451e_fk_core_event_id")
   core_kwsmember     core_kwsmember?      @relation(fields: [kws_member_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "core_attendee_kws_member_id_6059386c_fk_core_kwsmember_user_id")
   core_eventticket   core_eventticket?    @relation(fields: [ticket_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_attendee_ticket_id_140cb005_fk_core_eventticket_id")
   core_auditattendee core_auditattendee[]
-  core_luckydraw     core_luckydraw[]
 
   @@index([event_id], map: "core_attendee_event_id_7f07451e")
   @@index([kws_member_id], map: "core_attendee_kws_member_id_6059386c")
@@ -285,7 +288,6 @@ model core_event {
   core_attendee    core_attendee[]
   core_auditevent  core_auditevent[]
   core_eventticket core_eventticket[]
-  core_luckydraw   core_luckydraw[]
 }
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
@@ -340,7 +342,7 @@ model core_informationupdate {
 model core_kwsmember {
   profile_picture                                                                                 String?                           @db.VarChar(100)
   user_id                                                                                         BigInt                            @id
-  civil_id                                                                                        String                            @db.VarChar(50)
+  civil_id                                                                                        String                            @unique @db.VarChar(50)
   first_name                                                                                      String?                           @db.VarChar(150)
   middle_name                                                                                     String?                           @db.VarChar(150)
   last_name                                                                                       String?                           @db.VarChar(150)
@@ -417,6 +419,7 @@ model core_kwsmember {
   membership_status                                                                               String?                           @db.VarChar(10)
   requested_membership                                                                            String?                           @db.VarChar(255)
   general_address                                                                                 String?                           @db.VarChar(255)
+  reasonofinactive                                                                                String?                           @default("others")
   core_attendee                                                                                   core_attendee[]
   core_auditattendee                                                                              core_auditattendee[]
   core_auditevent                                                                                 core_auditevent[]
@@ -445,21 +448,6 @@ model core_kwsmember {
   @@index([civil_id], map: "core_kwsmember_civil_id_9d8c8e12_like")
   @@index([kwsid], map: "core_kwsmember_kwsid_e46800af")
   @@index([kwsid], map: "core_kwsmember_kwsid_e46800af_like")
-}
-
-/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
-model core_luckydraw {
-  id            BigInt         @id @default(autoincrement())
-  timestamp     DateTime       @db.Timestamptz(6)
-  remarks       String?
-  attendee_id   BigInt?
-  event_id      BigInt?
-  core_attendee core_attendee? @relation(fields: [attendee_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_luckydraw_attendee_id_7d4ff97c_fk_core_attendee_id")
-  core_event    core_event?    @relation(fields: [event_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_luckydraw_event_id_a4a07889_fk_core_event_id")
-
-  @@unique([event_id, attendee_id], map: "unique_lucky_draw_per_event")
-  @@index([attendee_id], map: "core_luckydraw_attendee_id_7d4ff97c")
-  @@index([event_id], map: "core_luckydraw_event_id_a4a07889")
 }
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
@@ -805,28 +793,58 @@ model core_memberrenewal {
   @@index([member_id], map: "core_memberrenewal_member_id_f10247f3")
 }
 
-model core_raffle {
-  id                 BigInt              @id @default(autoincrement())
-  name               String              @db.VarChar(250)
-  prize              String              @db.VarChar(250)
-  organizer_id       String              @db.VarChar(50)
-  start_date         DateTime            @db.Timestamptz(6)
-  end_date           DateTime            @db.Timestamptz(6)
-  core_raffleTickets core_raffleTicket[]
+model core_raffle_attendee {
+  id            BigInt   @id @default(autoincrement())
+  kws_id        String
+  name          String
+  phone         BigInt?
+  civil_id      String
+  num_people    Int
+  attended_time DateTime @db.Timestamptz(6)
+  raffle_id     BigInt?
+
+  @@index([raffle_id])
 }
 
 /// This model has constraints using non-default deferring rules and requires additional setup for migrations.
 model core_raffleTicket {
-  id            BigInt       @id @default(autoincrement())
-  name          String       @db.VarChar(250)
-  phone         String       @db.VarChar(50)
-  civil_id      String       @db.VarChar(12)
-  ticket_no     String       @db.VarChar(50)
-  amount_in_kwd Decimal      @db.Decimal(10, 3)
+  id            BigInt   @id @default(autoincrement())
+  name          String   @db.VarChar(250)
+  phone         String   @db.VarChar(50)
+  civil_id      String   @db.VarChar(12)
+  amount_in_kwd Decimal  @db.Decimal(10, 3)
   raffle_id     BigInt?
-  timestamp     DateTime     @db.Timestamptz(6)
-  core_raffle   core_raffle? @relation(fields: [raffle_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "core_raffleTicket_raffle_id_c6580ce6_fk_core_raffle_id")
+  timestamp     DateTime @db.Timestamptz(6)
+  kws_id        String   @db.VarChar(50)
 
-  @@unique([raffle_id, ticket_no], map: "unique_ticket_created_per_raffle")
+  @@unique([raffle_id, kws_id], map: "unique_ticket_created_per_raffle")
   @@index([raffle_id], map: "core_raffleTicket_raffle_id_c6580ce6")
+}
+
+model lucky_draw {
+  id             BigInt           @id @default(autoincrement())
+  sponsor        String?          @db.VarChar(255)
+  prize          String           @db.VarChar(255)
+  participants   Json?            @db.Json
+  start_time     DateTime         @db.Timestamp(6)
+  createdat      DateTime?        @default(now()) @db.Timestamp(6)
+  raffleid       BigInt
+  status         Boolean?         @default(false)
+  raffle_winners raffle_winners[]
+}
+
+model raffle_winners {
+  id         BigInt     @id @default(autoincrement())
+  spinId     BigInt
+  raffleid   BigInt
+  name       String     @db.VarChar(255)
+  prize      String     @db.VarChar(255)
+  kwsid      String     @db.VarChar(255)
+  lucky_draw lucky_draw @relation(fields: [spinId], references: [id], onDelete: Cascade, map: "fk_raffle_winners_draw")
+}
+
+enum reasonofinactive {
+  left_kuwait @map("left kuwait")
+  deceased
+  others
 }

@@ -9,7 +9,6 @@ export const getEventList = async (req, res) => {
         core_attendee: true,
         core_auditevent: true,
         core_eventticket: true,
-        core_luckydraw: true,
       },
     });
 
@@ -98,7 +97,6 @@ export const getEvent = async (req, res) => {
         core_attendee: true,
         core_auditevent: true,
         core_eventticket: true,
-        core_luckydraw: true,
       },
     });
 
@@ -265,29 +263,24 @@ export const addTicket = async (req, res) => {
       },
     });
 
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
+    // if (!user) {
+    //   return res.status(404).json({ error: "User not found" });
+    // }
 
-    // Check if the user is not active
-    if (user.is_active) {
-      // Create the ticket if the user is not active
-      const newTicket = await prisma.core_eventticket.create({
-        data: {
-          name,
-          phone,
-          civil_id,
-          ticket_no,
-          amount_in_kwd: parseFloat(amount_in_kwd), // Convert to float
-          event_id: BigInt(id), // Convert event ID to BigInt
-          timestamp: new Date(),
-        },
-      });
+    // Create the ticket if the user is not active
+    const newTicket = await prisma.core_eventticket.create({
+      data: {
+        name,
+        phone,
+        civil_id,
+        ticket_no,
+        amount_in_kwd: parseFloat(amount_in_kwd), // Convert to float
+        event_id: BigInt(id), // Convert event ID to BigInt
+        timestamp: new Date(),
+      },
+    });
 
-      return res.status(201).json(newTicket);
-    } else {
-      return res.status(400).json({ error: "Your Membership has expired" });
-    }
+    return res.status(201).json(newTicket);
   } catch (error) {
     console.error("Error adding ticket:", error);
     return res
@@ -448,8 +441,6 @@ export const getAttendanceList = async (req, res) => {
   try {
     const { event_id } = req.params; // Get event_id from the route parameters
 
-    // console.log("Received Event ID:", event_id);
-
     if (!event_id) {
       return res.status(400).json({ message: "Event ID is required" });
     }
@@ -497,6 +488,10 @@ export const getAttendanceList = async (req, res) => {
 
       return {
         Name: attendance.core_event?.name,
+        name: attendance.name,
+        civil_id: attendance.civil_id,
+        kws_id: attendance.kws_id,
+        phone: attendance.phone,
         ticketNo, // Ensure ticket_no is same as kwsid
         firstname: kwsmember?.first_name,
         lastname: kwsmember?.last_name,
@@ -525,7 +520,8 @@ export const getAttendanceList = async (req, res) => {
 
 export const markAttendance = async (req, res) => {
   try {
-    const { event_id, ticket_no } = req.body;
+    const { kws_id, name, phone, civil_id, num_people, event_id, ticket_no } =
+      req.body;
 
     // console.log("Incoming Request Body:", req.body);
 
@@ -536,24 +532,24 @@ export const markAttendance = async (req, res) => {
     }
 
     // Step 1: Fetch the ticket using event_id and ticket_no (composite unique key)
-    const ticket = await prisma.core_eventticket.findUnique({
-      where: {
-        event_id_ticket_no: {
-          // Use the composite unique key
-          event_id: Number(event_id), // Ensure event_id is a number
-          ticket_no: ticket_no, // Look for ticket using ticket_no
-        },
-      },
-    });
+    // const ticket = await prisma.core_eventticket.findUnique({
+    //   where: {
+    //     event_id_ticket_no: {
+    //       // Use the composite unique key
+    //       event_id: Number(event_id), // Ensure event_id is a number
+    //       ticket_no: ticket_no, // Look for ticket using ticket_no
+    //     },
+    //   },
+    // });
 
-    if (!ticket) {
-      return res.status(404).json({ error: "Invalid ticket." });
-    }
+    // if (!ticket) {
+    //   return res.status(404).json({ error: "Invalid ticket." });
+    // }
 
     // Step 2: Check if attendance is already marked using ticket_id
     const existingAttendance = await prisma.core_attendee.findFirst({
       where: {
-        ticket_id: ticket.id, // Reference ticket_id in core_attendee
+        kws_id: kws_id,
         event_id: Number(event_id), // Ensure event_id is a number
       },
     });
@@ -568,9 +564,13 @@ export const markAttendance = async (req, res) => {
     const attendance = await prisma.core_attendee.create({
       data: {
         event_id: Number(event_id), // Ensure event_id is a number
-        ticket_id: ticket.id, // Reference ticket_id from core_eventticket
+        // ticket_id: ticket.id, // Reference ticket_id from core_eventticket
         attended_time: new Date(),
-        num_people: 1, // Assume 1 person per ticket
+        kws_id: kws_id, // Reference ticket_id from core_eventticket
+        name,
+        phone: phone,
+        civil_id,
+        num_people: 1 + Number(num_people),
       },
     });
 
