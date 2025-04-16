@@ -8,6 +8,7 @@ import {
   createUpdateRequest,
   approveUpdateRequest,
   pendingrequest,
+  updateProfilePhoto,
 } from "../controllers/profileController.js";
 import { uploadFiles } from "../middleware/fileUpload.js";
 const router = Router();
@@ -25,5 +26,7 @@ router.get("/pending-updates", getPendingUpdateRequests);
 router.post("/approve", approveUpdateRequest);
 
 router.get("/pendingrequest", pendingrequest);
+
+router.put("/updatephoto/:user_id", uploadFiles, updateProfilePhoto);
 
 export default router;

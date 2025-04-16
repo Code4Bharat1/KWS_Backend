@@ -698,3 +698,62 @@ export const pendingrequest = async (req, res) => {
       .json({ error: "Server error while fetching transaction count." });
   }
 };
+
+export const updateProfilePhoto = async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    if (!user_id) {
+      return res.status(400).json({ error: "User ID is required." });
+    }
+
+    let parsedUserId;
+    try {
+      parsedUserId = BigInt(user_id);
+    } catch (err) {
+      return res.status(400).json({ error: "User ID must be a valid number." });
+    }
+
+    const { profile_picture, kwsid } = req.body;
+    const updateData = { profile_picture };
+
+    const existingUser = await prisma.core_kwsmember.findUnique({
+      where: { user_id: parsedUserId },
+      select: { civil_id: true, membership_status: true }, // Include membership_status in the query
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    // Handle profile picture upload
+    if (req.files?.profile_picture?.length > 0) {
+      const profilePic = req.files.profile_picture[0];
+      const uploadDir = path.resolve("uploads/profile-pictures");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+      const uploadPath = path.join(uploadDir, profilePic.filename);
+      fs.renameSync(profilePic.path, uploadPath);
+      updateData.profile_picture = `uploads/profile-pictures/${profilePic.filename}`;
+    }
+
+    // Update user profile
+    const [updatedUser] = await prisma.$transaction([
+      prisma.core_kwsmember.update({
+        where: { user_id: parsedUserId },
+        data: { ...updateData, kwsid: kwsid },
+      }),
+    ]);
+
+    return res.status(200).json({
+      message: "User profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while updating the user profile." });
+  }
+};
