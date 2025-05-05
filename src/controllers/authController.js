@@ -102,14 +102,14 @@ export const registerUser = async (req, res) => {
       });
     }
 
-    const randomSuffix = crypto.randomBytes(3).toString("hex"); // Random 6-character string
+      const randomSuffix = crypto.randomBytes(3).toString("hex"); // Random 6-character string // it is just user to create a random/unique user name 
     const username = `${first_name.toLowerCase()}${randomSuffix}`;
 
     // Hash the password and add a prefix
     const hashedPassword = await argon2.hash(password);
     const hashedPasswordWithPrefix = `argon2${hashedPassword}`;
 
-    // Create the user record
+    // Create the user record yahan par jo user register hua h upar uska record jaakr create hoga 
     const newUser = await prisma.users_user.create({
       data: {
         email,
@@ -249,6 +249,7 @@ export const checkcivilid = async (req, res) => {
     });
     res.json({ exists: !!user });
   } catch (error) {
+    console.error("prsima error:",error)
     res.status(500).json({ message: "Server error" });
   }
 };
