@@ -17,14 +17,14 @@ const __dirname = path.dirname(__filename);
 export const getPendingApprovals = async (req, res) => {
   try {
 
-    const userRoles = req.user.roles; // assuming you decoded JWT and added user to req
+    // const userRoles = req.user.roles; // assuming you decoded JWT and added user to req
 
-    const zonalRoles = ["Fahaheel", "Farwaniya", "Jleeb", "Hawally", "Salmiya"];
-    const isZonal = zonalRoles.some(role => userRoles[role]);
+    // const zonalRoles = ["Fahaheel", "Farwaniya", "Jleeb", "Hawally", "Salmiya"];
+    // const isZonal = zonalRoles.some(role => userRoles[role]);
 
-    if (isZonal) {
-      return res.status(403).json({ message: "Access denied. Zonal members cannot view pending approvals." });
-    }//nouman khan added this just to restrict the zonal members
+    // if (isZonal) {
+    //   return res.status(403).json({ message: "Access denied. Zonal members cannot view pending approvals." });
+    // }//nouman khan added this just to restrict the zonal members
 
 
 
